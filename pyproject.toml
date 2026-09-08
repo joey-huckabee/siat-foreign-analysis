@@ -1,0 +1,27 @@
+# Tool configuration for foreign_analysis.py
+#
+# This file holds settings for: black, isort, pyright, vulture.
+#
+# Settings for mypy and pylint live in their dedicated config files
+# (./mypy.ini and ./.pylintrc) due to the size of those rule sets;
+# both tools discover their own config files automatically and ignore
+# this file when their dedicated config is present.
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pyright]
+typeCheckingMode = "basic"
+reportGeneralTypeIssues = "none"
+
+[tool.vulture]
+paths = ["foreign_analysis.py"]
+# Default confidence threshold of 60 produces many false positives in
+# script-style __main__ blocks. 80 is the project floor.
+min_confidence = 80
+# Show longest unreachable blocks first to focus review
+sort_by_size = true

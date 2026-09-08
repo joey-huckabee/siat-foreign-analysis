@@ -1,0 +1,18 @@
+{
+  // Ruff, YAML, TOML and GitHub Actions extensions are omitted: this project
+  // has no pyproject.toml, no YAML, no TOML and no workflows for them to act
+  // on. Add them back alongside the config they need.
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+    "ms-python.black-formatter",
+    "ms-python.isort",
+    "ms-python.pylint",
+    "ms-python.mypy-type-checker"
+  ],
+  "unwantedRecommendations": [
+    "ms-python.flake8",
+    "ms-python.autopep8"
+  ]
+}
