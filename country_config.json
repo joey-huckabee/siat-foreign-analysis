@@ -1,0 +1,12 @@
+{
+    "adversarial_nations": [
+        {
+            "name": "russia",
+            "country_code": "ru"
+        },
+        {
+            "name": "badcountry",
+            "country_code": "bc"
+        }
+    ]
+}
