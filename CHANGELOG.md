@@ -9,10 +9,13 @@ Known defects and undecided policy are tracked in [`docs/ROADMAP.md`](docs/ROADM
 
 ## [1.3.0] - unreleased
 
-Takes four roadmap items that harden paths real input has not yet walked.
-**No published number moves**: the byte comparison against the recorded 1.1.0
-reports stayed green through all four, which is what says so rather than a
-claim in a commit message.
+Takes six roadmap items. Four harden paths real input has not yet walked and
+move no published number. Two — items 3 and 11 — deliberately change
+`detailed_score_report`, and nothing else: neither CSV moved, `score_report`
+did not move, and **no repository changed band or pass/fail verdict**.
+
+If you parse `detailed_score_report.json`, read *Changed* below before
+upgrading.
 
 Item 1 (bot commits) is deferred by decision — whether a bot's commits count
 as human contribution is policy, and it is not settled.
@@ -30,6 +33,25 @@ as human contribution is policy, and it is not settled.
 - A configuration listing the same country code twice in different cases is
   refused. The two entries would collapse into one report key and only the
   last name would be announced.
+
+### Changed
+
+- **`details.countries.<code>.commitPercent` is removed** (roadmap item 11).
+  It sat beside the real `commitsPercent`, was initialised and never
+  assigned, and so read integer `0` for every country of every repository
+  ever scored. Nothing can have depended on its value, only its presence.
+- **A blank `country_code` no longer counts as an attribution** (roadmap item
+  3), so its commits leave the adversarial-percentage denominator and join
+  the unattributed bucket, where `include_unattributed_in_denominator`
+  governs them like any other. Upstream emits three states — `null` for no
+  lookup, `""` for a lookup that resolved no country, and a real code — and
+  only `null` was being tested.
+
+  This moves numbers. For `pallets/itsdangerous` the denominator falls from
+  476 to 467 and contributor coverage from 64.29% to 61.90%, the latter being
+  the more honest figure: that contributor was never actually located. Any
+  repository where blank-code commits were diluting a real adversarial
+  percentage will now score lower, which is the point.
 
 ### Fixed
 

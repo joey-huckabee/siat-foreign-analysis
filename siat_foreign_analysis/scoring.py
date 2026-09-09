@@ -171,6 +171,32 @@ def score_for_percent(adv_percent: float, *, adv_weight: float = ADV_WEIGHT) -> 
     return 0.0 * adv_weight
 
 
+def _is_attributed(country_code: Any) -> bool:
+    """Return whether a contributor's country code names a real country.
+
+    ``country_code`` has three states upstream, and only one of them is an
+    attribution (roadmap item 3):
+
+    - ``None``: no lookup ran.
+    - ``""``: a lookup ran and resolved no country component at that
+      resolution. It used to be treated as a country in its own right, so
+      those commits entered the denominator as though attributed and diluted
+      the adversarial percentage.
+    - a code: the contributor was located.
+
+    Whitespace-only is folded in with ``""``. It is not a state upstream
+    documents, but it is not a country either, and treating it as one would
+    reintroduce exactly the defect this closes.
+
+    Args:
+        country_code: The value read from ``internal_address.country_code``.
+
+    Returns:
+        True when the code names a country.
+    """
+    return isinstance(country_code, str) and bool(country_code.strip())
+
+
 def collect_contributions(
     document: Any,
     *,
@@ -224,10 +250,7 @@ def collect_contributions(
         # location; one that carried a location would be scored as a person,
         # and with `include_unattributed` set they enter the denominator
         # outright. Roadmap item 1.
-        #
-        # An empty-string country code is treated as attributed, because only
-        # `None` is tested. Roadmap item 3.
-        if code is None:
+        if not _is_attributed(code):
             unattributed += 1
             if include_unattributed:
                 total_commits += contribution

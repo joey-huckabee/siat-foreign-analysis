@@ -50,13 +50,16 @@ def test_details_omits_adv_percent_when_it_is_not_measurable() -> None:
     assert list(details) == ["countries", "topAdvContributorCountry", "advScore"]
 
 
-def test_country_block_carries_both_percent_keys() -> None:
-    """Roadmap item 11: commitPercent is a typo of commitsPercent."""
+def test_country_block_carries_one_percent_key() -> None:
+    """Roadmap item 11: commitPercent was a typo and always read zero."""
     block = result().to_details()["countries"]["ru"]
 
-    assert list(block) == ["commits", "commitPercent", "commitsPercent"]
-    assert block["commitPercent"] == 0
+    assert list(block) == ["commits", "commitsPercent"]
     assert block["commitsPercent"] == 10.0
+
+
+def test_the_misspelled_percent_key_is_gone() -> None:
+    assert "commitPercent" not in result().to_details()["countries"]["ru"]
 
 
 def test_country_block_omits_commits_percent_when_unmeasurable() -> None:
@@ -64,7 +67,7 @@ def test_country_block_omits_commits_percent_when_unmeasurable() -> None:
         countries={"ru": CountryCommits(commits=0)}, adv_percent=None, adv_score=0
     ).to_details()
 
-    assert list(details["countries"]["ru"]) == ["commits", "commitPercent"]
+    assert list(details["countries"]["ru"]) == ["commits"]
 
 
 def test_details_survive_a_json_round_trip() -> None:

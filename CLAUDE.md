@@ -95,10 +95,10 @@ endings, and integer `25` beside float `22.5` for `advScore`. All of it is
 load-bearing and all of it is pinned by `tests/test_baseline.py`.
 
 **`models.AdversarialResult.to_details()` deliberately preserves defects.**
-`commitPercent` is always integer zero beside the real `commitsPercent`;
 `advPercent` is omitted entirely rather than set to zero when the denominator
-was zero. Each is annotated with the roadmap item that owns it. Do not tidy
-these away as a side effect of another change.
+was zero (item 7), and `advScore` is integer `25` in the top band and a float
+in every other. Each is annotated with the roadmap item that owns it. Do not
+tidy these away as a side effect of another change — take the item.
 
 **Diagnostics go to stderr.** Nothing writes to stdout. The package logger
 does not propagate, which means `caplog` cannot see it once
@@ -107,9 +107,14 @@ exercise the CLI.
 
 ## Testing
 
-`tests/fixtures/expected/` holds reports **recorded by running the previous
-release's script**, and `tests/test_baseline.py` compares against them byte
-for byte. This is the most important thing in the test suite.
+`tests/fixtures/expected/` holds the reports the package is expected to
+produce, and `tests/test_baseline.py` compares against them byte for byte.
+This is the most important thing in the test suite.
+
+They started as output recorded from the 1.1.0 script, which is how 1.2.0
+proved it moved nothing. Each release since has re-recorded only the files a
+roadmap item deliberately changed, with that diff reviewed as part of the
+change. Their authority is that reviewed history, not the file contents.
 
 When a roadmap item is taken and a number is *supposed* to move, those tests
 fail. That is the design: re-record the fixtures deliberately, as part of the

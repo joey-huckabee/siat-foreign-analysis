@@ -118,13 +118,9 @@ class AdversarialResult:
     def to_details(self) -> dict[str, Any]:
         """Render the legacy ``details`` block written to the detailed report.
 
-        Reproduces the pre-package output exactly, including three things
-        that are wrong and are deliberately left alone until the roadmap item
-        that owns each is taken:
+        Two things here are still wrong and are deliberately left alone until
+        the roadmap item that owns each is taken:
 
-        - ``commitPercent`` is written alongside ``commitsPercent`` and is
-          always integer zero. The first is initialised and never assigned;
-          the second carries the value (roadmap item 11).
         - ``advPercent`` is **omitted entirely** rather than set to zero when
           the denominator was zero, because the pre-package function returned
           before assigning it (roadmap item 7).
@@ -133,13 +129,18 @@ class AdversarialResult:
           rest by a float. That difference is visible in the JSON (``25``
           against ``22.5``), so it is preserved rather than normalised.
 
+        ``commitPercent`` was removed in 1.3.0 (roadmap item 11). It sat
+        beside the real ``commitsPercent``, was initialised and never
+        assigned, and so read integer zero for every country of every
+        repository ever scored.
+
         Returns:
             The ``details`` mapping, with keys in the order the pre-package
             script produced them.
         """
         countries: dict[str, dict[str, Any]] = {}
         for code, entry in self.countries.items():
-            block: dict[str, Any] = {"commits": entry.commits, "commitPercent": 0}
+            block: dict[str, Any] = {"commits": entry.commits}
             if entry.commits_percent is not None:
                 block["commitsPercent"] = entry.commits_percent
             countries[code] = block

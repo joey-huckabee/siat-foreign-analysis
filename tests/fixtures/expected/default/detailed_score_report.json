@@ -6,12 +6,10 @@
             "countries": {
                 "ru": {
                     "commits": 0,
-                    "commitPercent": 0,
                     "commitsPercent": 0.0
                 },
                 "bc": {
                     "commits": 0,
-                    "commitPercent": 0,
                     "commitsPercent": 0.0
                 }
             },
@@ -27,12 +25,10 @@
             "countries": {
                 "ru": {
                     "commits": 40,
-                    "commitPercent": 0,
                     "commitsPercent": 40.0
                 },
                 "bc": {
                     "commits": 0,
-                    "commitPercent": 0,
                     "commitsPercent": 0.0
                 }
             },
@@ -48,17 +44,15 @@
             "countries": {
                 "ru": {
                     "commits": 12,
-                    "commitPercent": 0,
-                    "commitsPercent": 11.009174311926605
+                    "commitsPercent": 12.0
                 },
                 "bc": {
                     "commits": 0,
-                    "commitPercent": 0,
                     "commitsPercent": 0.0
                 }
             },
             "topAdvContributorCountry": "ru",
-            "advPercent": 11.009174311926605,
+            "advPercent": 12.0,
             "advScore": 10.0
         }
     },
@@ -68,12 +62,10 @@
         "details": {
             "countries": {
                 "ru": {
-                    "commits": 0,
-                    "commitPercent": 0
+                    "commits": 0
                 },
                 "bc": {
-                    "commits": 0,
-                    "commitPercent": 0
+                    "commits": 0
                 }
             },
             "topAdvContributorCountry": null,
@@ -86,12 +78,10 @@
         "details": {
             "countries": {
                 "ru": {
-                    "commits": 0,
-                    "commitPercent": 0
+                    "commits": 0
                 },
                 "bc": {
-                    "commits": 0,
-                    "commitPercent": 0
+                    "commits": 0
                 }
             },
             "topAdvContributorCountry": null,

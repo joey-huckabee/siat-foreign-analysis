@@ -6,11 +6,17 @@ interesting path: the top band, a middle band, past the last band, a
 repository whose contributor list never arrived, and one where nobody could
 be located.
 
-``tests/fixtures/expected`` holds the reports the **1.1.0 script** produced
-from those documents, recorded by running it. They are the ground truth for
-``test_baseline.py``: the package is correct here when it reproduces them
-byte for byte, so a change to scoring shows up as a failing comparison rather
+``tests/fixtures/expected`` holds the reports the package is expected to
+produce from those documents, and ``test_baseline.py`` compares against them
+byte for byte. A change to scoring shows up as a failing comparison rather
 than as a number nobody noticed moving.
+
+They began as output **recorded from the 1.1.0 script**, so 1.2.0 could prove
+it moved nothing. Since then they have been re-recorded only where a roadmap
+item deliberately changed a number, and the diff on these files was reviewed
+as part of that change. ``CHANGELOG.md`` says which release moved what. Their
+authority is that reviewed history: never re-record them to turn a red suite
+green.
 """
 
 from __future__ import annotations

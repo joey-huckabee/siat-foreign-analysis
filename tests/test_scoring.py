@@ -207,17 +207,50 @@ def test_a_bot_is_counted_as_a_contributor(document: dict[str, Any]) -> None:
     assert coverage.unattributed == 0
 
 
-def test_an_empty_country_code_counts_as_attributed(document: dict[str, Any]) -> None:
-    """Roadmap item 3: only None is tested, so "" reaches the denominator."""
-    document["contributors"] = [make_contributor("", 9)]
+@pytest.mark.parametrize("blank", ["", " ", "	", "   "])
+def test_a_blank_country_code_is_not_an_attribution(document: dict[str, Any], blank: str) -> None:
+    """Roadmap item 3: `""` used to enter the denominator as a country."""
+    document["contributors"] = [make_contributor(blank, 9)]
 
     codes, _, total, coverage = collect_contributions(
         document, include_unattributed=False, source="test"
     )
 
-    assert codes == [""]
-    assert total == 9
-    assert coverage.unattributed == 0
+    assert codes == []
+    assert total == 0
+    assert coverage.unattributed == 1
+
+
+def test_a_blank_code_no_longer_dilutes_the_adversarial_percentage(
+    document: dict[str, Any],
+) -> None:
+    """The defect that mattered: `""` commits inflated the denominator.
+
+    Ten adversarial commits against ninety attributed is 10%. The ninety
+    unresolved commits used to join them, making it 5% and moving the
+    repository up two bands.
+    """
+    document["contributors"] = [
+        make_contributor("ru", 10),
+        make_contributor("us", 90),
+        make_contributor("", 100),
+    ]
+
+    score = score_repository(document, config(), "test")
+
+    assert score.adversarial.adv_percent == 10.0
+    assert score.adversarial.adv_score == 10.0
+
+
+def test_a_blank_code_counts_as_unattributed_for_the_toggle(
+    document: dict[str, Any],
+) -> None:
+    """It joins the None bucket, so the toggle governs it like any other."""
+    document["contributors"] = [make_contributor("ru", 10), make_contributor("", 90)]
+
+    _, _, total, _ = collect_contributions(document, include_unattributed=True, source="test")
+
+    assert total == 100
 
 
 def test_a_null_contribution_counts_as_zero(

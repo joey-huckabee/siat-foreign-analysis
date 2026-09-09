@@ -23,12 +23,12 @@ Items 4 and 9 now warn at runtime but are otherwise unchanged.
 
 | | Items | State |
 |---|---|---|
-| High | 1, 2, 3, 5 | Open |
-| High | 4 | **Done in 1.3.0** |
+| High | 1, 2, 5 | Open |
+| High | 3, 4 | **Done in 1.3.0** |
 | Medium | 7, 8, 10 | Open |
 | Medium | 6, 9 | **Done in 1.3.0** |
-| Low | 11, 12, 13 | Open |
-| Low | 14 | **Done in 1.3.0** |
+| Low | 12, 13 | Open |
+| Low | 11, 14 | **Done in 1.3.0** |
 | Low | 15 | **Done in 1.2.0** |
 | Project | 16-25 | **Done in 1.2.0** |
 
@@ -76,13 +76,20 @@ A consumer reading `score_report.csv` cannot tell a genuinely clean repository
 from one where half the contributors were never located. Carry both figures
 into the reports as columns.
 
-### 3. An empty country code is treated as a real country
+### 3. An empty country code is treated as a real country - DONE in 1.3.0
 
 `country_code` has three states: `null` (no lookup ran), `""` (the lookup ran
 and returned no country component at that resolution), and a real code. Line
 296 tests only `is None`, so `""` is appended to `country_codes` and its
 commits enter the denominator as though attributed. `itsdangerous` has **9
 commits** in that bucket.
+
+*Fixed: `_is_attributed` treats a blank code as unattributed, so those commits
+join the `None` bucket and the denominator toggle governs them like any other.
+Whitespace-only is folded in with `""`. This moved a published number:
+`itsdangerous`'s denominator falls from 476 to 467, and its contributor
+coverage from 64.29% to 61.90% - the second figure being the more honest one,
+since that contributor was never actually located.*
 
 ### 4. Country-code case is matched by convention, not enforced - DONE in 1.3.0
 
@@ -174,10 +181,14 @@ reported as a failure. Reconcile against `githubmetrics.csv` or
 
 ## Low — correctness of detail, not of score
 
-### 11. `commitPercent` is initialised and never written
+### 11. `commitPercent` is initialised and never written - DONE in 1.3.0
 
 Line 141 creates `commitPercent`; line 178 writes `commitsPercent`. Both ship
 in `details.countries`, and the first is always `0`.
+
+*Fixed: `commitPercent` is removed. It was published for every country of
+every repository ever scored and read integer zero every time, so nothing can
+have depended on its value - only on its presence.*
 
 ### 12. `unclass_score` is recomputed rather than read
 
