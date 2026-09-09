@@ -21,6 +21,7 @@ from typing import Any
 from siat_foreign_analysis.errors import ConfigInvalidError, ConfigNotFoundError
 from siat_foreign_analysis.logger import get_logger
 from siat_foreign_analysis.models import AdversarialNation, Config, ScoringConfig
+from siat_foreign_analysis.paths import resolve_path
 
 logger = get_logger(__name__)
 
@@ -100,7 +101,9 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
             malformed or repeats a code, or carries a ``scoring`` block whose
             values are of the wrong type or negative.
     """
-    config_path = Path(path)
+    # Resolved before use, so the path read is the path reported and a
+    # relative fragment cannot mean two different files in one run.
+    config_path = resolve_path(path)
     if not config_path.is_file():
         raise ConfigNotFoundError(f"Country configuration not found: {config_path}")
 

@@ -142,8 +142,10 @@ def test_an_unwritable_output_directory_is_reported(tmp_path: Path) -> None:
     blocker = tmp_path / "output"
     blocker.write_text("I am a file, not a directory", encoding="UTF-8")
 
+    entries = [score()]
+
     with pytest.raises(OutputError, match="output directory"):
-        write_reports([score()], blocker)
+        write_reports(entries, blocker)
 
 
 def test_an_unwritable_report_is_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -151,10 +153,11 @@ def test_an_unwritable_report_is_reported(tmp_path: Path, monkeypatch: pytest.Mo
     def refuse(*_args: object, **_kwargs: object) -> None:
         raise OSError("disk full")
 
+    entries = [score()]
     monkeypatch.setattr(Path, "open", refuse)
 
     with pytest.raises(OutputError, match="Could not write"):
-        write_reports([score()], tmp_path)
+        write_reports(entries, tmp_path)
 
 
 def test_a_failing_csv_write_is_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -170,7 +173,8 @@ def test_a_failing_csv_write_is_reported(tmp_path: Path, monkeypatch: pytest.Mon
         def writeheader(self) -> None:
             raise OSError("disk full")
 
+    entries = [score()]
     monkeypatch.setattr(csv, "DictWriter", Refusing)
 
     with pytest.raises(OutputError, match="Could not write"):
-        write_reports([score()], tmp_path)
+        write_reports(entries, tmp_path)

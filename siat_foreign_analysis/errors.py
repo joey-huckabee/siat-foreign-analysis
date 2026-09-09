@@ -71,6 +71,19 @@ class InputDecodeError(InputError, ValueError):
     """A document was read but is not valid JSON."""
 
 
+class PathEscapeError(InputError, ValueError):
+    """A path resolved outside the directory it was found in.
+
+    Raised for a document under the input directory, or a report under the
+    output directory, whose resolved location leaves that directory. A
+    symlink is the usual cause.
+
+    Sits under :class:`InputError` because a run meeting one has been handed
+    a directory it cannot safely walk, which is an input problem however the
+    link got there.
+    """
+
+
 # ---------------------------------------------------------------------------
 # Documents
 # ---------------------------------------------------------------------------

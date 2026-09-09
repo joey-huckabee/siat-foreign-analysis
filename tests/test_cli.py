@@ -42,13 +42,17 @@ def test_paths_are_parsed_as_paths() -> None:
 
 
 def test_verbose_and_quiet_are_mutually_exclusive() -> None:
+    parser = build_parser()
+
     with pytest.raises(SystemExit):
-        build_parser().parse_args(["-v", "-q"])
+        parser.parse_args(["-v", "-q"])
 
 
 def test_version_is_reported(capsys: pytest.CaptureFixture[str]) -> None:
+    parser = build_parser()
+
     with pytest.raises(SystemExit) as caught:
-        build_parser().parse_args(["--version"])
+        parser.parse_args(["--version"])
 
     assert caught.value.code == 0
     assert __version__ in capsys.readouterr().out

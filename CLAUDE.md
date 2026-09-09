@@ -77,6 +77,7 @@ thing to account for. That is why the CLI is `argparse` and not `click`.
 | `inputs.py` | Discovery, bounded reads, the archive walker |
 | `reports.py` | Building and writing the four output files |
 | `errors.py` | The exception hierarchy |
+| `paths.py` | Path containment checks |
 | `exit_codes.py` | Process exit codes |
 | `logger.py` | Logging setup |
 
@@ -99,6 +100,16 @@ load-bearing and all of it is pinned by `tests/test_baseline.py`.
 was zero (item 7), and `advScore` is integer `25` in the top band and a float
 in every other. Each is annotated with the roadmap item that owns it. Do not
 tidy these away as a side effect of another change — take the item.
+
+**Anything read from `--input` must resolve inside it.** A scan directory
+arrives from elsewhere, so a symlink in it pointing out is a real escape, and
+`paths.resolve_within` is what stops it. Use it for any new path built from
+discovered data. Do not weaken it to make a test convenient.
+
+**Nothing is suppressed in `sonar-project.properties`.** A finding this
+project disagrees with stays open and gets argued in review. An exclusion
+added to green a dashboard outlives its reason, and the next person cannot
+tell a decision from an expedient.
 
 **Diagnostics go to stderr.** Nothing writes to stdout. The package logger
 does not propagate, which means `caplog` cannot see it once

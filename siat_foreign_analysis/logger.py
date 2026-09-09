@@ -58,7 +58,10 @@ def configure_logging(level: int = logging.INFO, *, stream: TextIO | None = None
     """
     logger = logging.getLogger(PACKAGE_LOGGER_NAME)
 
-    for existing in list(logger.handlers):
+    # Drained rather than iterated: removeHandler mutates the list being
+    # walked, so a plain `for` over it skips every other handler.
+    while logger.handlers:
+        existing = logger.handlers[0]
         logger.removeHandler(existing)
         existing.close()
 

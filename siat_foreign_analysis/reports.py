@@ -31,6 +31,7 @@ from typing import Any, Final
 from siat_foreign_analysis.errors import OutputError
 from siat_foreign_analysis.logger import get_logger
 from siat_foreign_analysis.models import RepositoryScore
+from siat_foreign_analysis.paths import resolve_path, resolve_within
 
 logger = get_logger(__name__)
 
@@ -153,6 +154,11 @@ def write_reports(
 ) -> list[Path]:
     """Write all four reports, creating the output directory if needed.
 
+    Each report path is confirmed to resolve inside the output directory
+    before it is opened. The four names are literal constants, so nothing can
+    escape today; the check means a report named from data in future cannot
+    quietly become a write anywhere on the filesystem.
+
     Args:
         scores: Every repository scored in this run.
         output_dir: Directory to write into.
@@ -163,8 +169,9 @@ def write_reports(
     Raises:
         OutputError: The directory or any of the four files could not be
             written.
+        PathEscapeError: A report path resolves outside the output directory.
     """
-    directory = Path(output_dir)
+    directory = resolve_path(output_dir)
     try:
         directory.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -176,12 +183,14 @@ def write_reports(
     written: list[Path] = []
 
     logger.info("Creating Score Report JSON File")
-    score_json = directory / "score_report.json"
+    score_json = resolve_within(
+        directory, directory / "score_report.json", what="score_report.json"
+    )
     _write_json(score_json, score_report)
     written.append(score_json)
 
     logger.info("Creating Score Report CSV File")
-    score_csv = directory / "score_report.csv"
+    score_csv = resolve_within(directory, directory / "score_report.csv", what="score_report.csv")
     _write_csv(
         score_csv,
         SCORE_REPORT_COLUMNS,
@@ -190,12 +199,16 @@ def write_reports(
     written.append(score_csv)
 
     logger.info("Creating Detailed Score Report JSON File")
-    detailed_json = directory / "detailed_score_report.json"
+    detailed_json = resolve_within(
+        directory, directory / "detailed_score_report.json", what="detailed_score_report.json"
+    )
     _write_json(detailed_json, detailed_report)
     written.append(detailed_json)
 
     logger.info("Creating Detailed Score Report CSV File")
-    detailed_csv = directory / "detailed_score_report.csv"
+    detailed_csv = resolve_within(
+        directory, directory / "detailed_score_report.csv", what="detailed_score_report.csv"
+    )
     _write_csv(
         detailed_csv,
         DETAILED_REPORT_COLUMNS,

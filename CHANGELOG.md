@@ -36,6 +36,15 @@ as human contribution is policy, and it is not settled.
 
 ### Changed
 
+- `sonar-project.properties` suppresses nothing. The one rule exclusion it
+  carried is gone; a finding this project disagrees with is left open and
+  argued in review rather than hidden in configuration. Everything remaining
+  in that file tells the scanner where to look — the source and test split,
+  the coverage report, the interpreter versions — and none of it changes
+  whether an issue is reported.
+- Errors reported by the CLI keep their traceback instead of discarding it.
+  The one-line message is unchanged at the default level; `--verbose` now
+  shows the traceback beneath it.
 - **`details.countries.<code>.commitPercent` is removed** (roadmap item 11).
   It sat beside the real `commitsPercent`, was initialised and never
   assigned, and so read integer `0` for every country of every repository
@@ -52,6 +61,23 @@ as human contribution is policy, and it is not settled.
   the more honest figure: that contributor was never actually located. Any
   repository where blank-code commits were diluting a real adversarial
   percentage will now score lower, which is the point.
+
+### Security
+
+- **Documents and archives discovered under `--input` are confirmed to resolve
+  inside it.** A scan directory, or one unpacked from a `.tar.gz`, arrives
+  from somewhere else; a symlink in it pointing at a file outside was followed
+  by an ordinary read, and the walk that found it never noticed. The archive
+  reader already refused non-regular members for this reason — this closes the
+  same hole for documents already on disk. Report paths are checked against
+  the output directory on the same principle.
+- The three paths from the command line are resolved once, at the edge, so
+  every later comparison is between real paths and log lines name what was
+  actually used.
+
+  Raised by SonarCloud's taint analysis (`S8707`) on its first run. The finding
+  was about command-line arguments, which are the user's own intent and not a
+  vulnerability; following it to where the argument leads found one that is.
 
 ### Fixed
 

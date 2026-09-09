@@ -175,7 +175,8 @@ def isolated_package_logger() -> Iterator[None]:
     logger = logging.getLogger(PACKAGE_LOGGER_NAME)
 
     def reset() -> None:
-        for handler in list(logger.handlers):
+        while logger.handlers:
+            handler = logger.handlers[0]
             logger.removeHandler(handler)
             handler.close()
         logger.setLevel(logging.NOTSET)

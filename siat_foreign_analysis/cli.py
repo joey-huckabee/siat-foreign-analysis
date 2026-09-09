@@ -141,7 +141,12 @@ def run(args: argparse.Namespace) -> int:
     try:
         config = load_config(args.config)
     except ConfigError as exc:
+        # The message alone for the user; the traceback kept, not
+        # discarded, and shown under --verbose. A stack trace is noise
+        # to someone who mistyped a path and is the first thing wanted
+        # when the cause is not what the message says.
         logger.error("%s", exc)
+        logger.debug("Configuration could not be loaded", exc_info=exc)
         return EXIT_CONFIG_ERROR
 
     log_config(config)
@@ -162,7 +167,12 @@ def run(args: argparse.Namespace) -> int:
             scores.append(score)
             run_coverage = run_coverage + score.coverage
     except (InputError, DocumentError) as exc:
+        # The message alone for the user; the traceback kept, not
+        # discarded, and shown under --verbose. A stack trace is noise
+        # to someone who mistyped a path and is the first thing wanted
+        # when the cause is not what the message says.
         logger.error("%s", exc)
+        logger.debug("Input could not be read or scored", exc_info=exc)
         return EXIT_INPUT_ERROR
 
     _log_run_coverage(run_coverage)
@@ -170,7 +180,12 @@ def run(args: argparse.Namespace) -> int:
     try:
         written = write_reports(scores, args.output)
     except OutputError as exc:
+        # The message alone for the user; the traceback kept, not
+        # discarded, and shown under --verbose. A stack trace is noise
+        # to someone who mistyped a path and is the first thing wanted
+        # when the cause is not what the message says.
         logger.error("%s", exc)
+        logger.debug("Reports could not be written", exc_info=exc)
         return EXIT_OUTPUT_ERROR
 
     logger.info("Scored %d repositor%s.", len(scores), "y" if len(scores) == 1 else "ies")

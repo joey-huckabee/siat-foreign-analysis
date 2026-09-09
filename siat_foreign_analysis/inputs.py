@@ -26,6 +26,7 @@ from siat_foreign_analysis.errors import (
     InputUnreadableError,
 )
 from siat_foreign_analysis.logger import get_logger
+from siat_foreign_analysis.paths import resolve_path, resolve_within
 
 logger = get_logger(__name__)
 
@@ -239,13 +240,21 @@ def discover_inputs(input_dir: Path | str = DEFAULT_INPUT_DIR) -> list[InputSour
     in the same order every time and the report keys come out in a stable
     order.
 
+    Every discovered path is confirmed to resolve inside the input directory.
+    A scan directory arrives from somewhere else, and a symlink in it pointing
+    outside would otherwise be followed by an ordinary read.
+
     Args:
         input_dir: Directory to search, at any depth.
 
     Returns:
         Sources in the order they will be scored.
+
+    Raises:
+        PathEscapeError: A discovered document or archive resolves outside
+            the input directory.
     """
-    directory = Path(input_dir)
+    directory = resolve_path(input_dir)
     sources: list[InputSource] = []
 
     if not directory.is_dir():
@@ -253,14 +262,14 @@ def discover_inputs(input_dir: Path | str = DEFAULT_INPUT_DIR) -> list[InputSour
         return sources
 
     for archive_path in sorted(directory.rglob("*.tar.gz")):
-        members = get_json_member_paths_in_tar_gz(tar_gz_path=archive_path)
-        logger.debug("Archive %s holds %d JSON member(s)", archive_path, len(members))
-        sources.extend(InputSource(archive=archive, member=member) for archive, member in members)
+        archive = resolve_within(directory, archive_path, what=f"Archive {archive_path.name}")
+        members = get_json_member_paths_in_tar_gz(tar_gz_path=archive)
+        logger.debug("Archive %s holds %d JSON member(s)", archive, len(members))
+        sources.extend(InputSource(archive=found_in, member=member) for found_in, member in members)
 
-    sources.extend(
-        InputSource(archive=None, member=PurePosixPath(direct_path.as_posix()))
-        for direct_path in sorted(directory.rglob("*.json"))
-    )
+    for direct_path in sorted(directory.rglob("*.json")):
+        document = resolve_within(directory, direct_path, what=f"Document {direct_path.name}")
+        sources.append(InputSource(archive=None, member=PurePosixPath(document.as_posix())))
 
     if not sources:
         logger.warning("No JSON documents or .tar.gz archives found in %s", directory)

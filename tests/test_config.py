@@ -58,24 +58,32 @@ def test_malformed_json_names_the_file(tmp_path: Path) -> None:
 
 
 def test_a_non_object_configuration_is_refused(tmp_path: Path) -> None:
+    config = write(tmp_path, ["ru"])
+
     with pytest.raises(ConfigInvalidError, match="must be a JSON object"):
-        load_config(write(tmp_path, ["ru"]))
+        load_config(config)
 
 
 def test_an_absent_nation_list_is_refused(tmp_path: Path) -> None:
+    config = write(tmp_path, {"scoring": {}})
+
     with pytest.raises(ConfigInvalidError, match="no 'adversarial_nations'"):
-        load_config(write(tmp_path, {"scoring": {}}))
+        load_config(config)
 
 
 def test_a_nation_list_of_the_wrong_type_is_refused(tmp_path: Path) -> None:
+    config = write(tmp_path, {"adversarial_nations": "ru"})
+
     with pytest.raises(ConfigInvalidError, match="must be a list"):
-        load_config(write(tmp_path, {"adversarial_nations": "ru"}))
+        load_config(config)
 
 
 def test_an_empty_nation_list_is_refused(tmp_path: Path) -> None:
     """Nothing could ever be scored adversarial, so this is a mistake."""
+    config = write(tmp_path, {"adversarial_nations": []})
+
     with pytest.raises(ConfigInvalidError, match="is empty"):
-        load_config(write(tmp_path, {"adversarial_nations": []}))
+        load_config(config)
 
 
 @pytest.mark.parametrize(
@@ -90,27 +98,35 @@ def test_an_empty_nation_list_is_refused(tmp_path: Path) -> None:
     ],
 )
 def test_a_malformed_nation_entry_is_refused(tmp_path: Path, entry: object) -> None:
+    config = write(tmp_path, {"adversarial_nations": [entry]})
+
     with pytest.raises(ConfigInvalidError):
-        load_config(write(tmp_path, {"adversarial_nations": [entry]}))
+        load_config(config)
 
 
 def test_a_malformed_entry_names_its_position(tmp_path: Path) -> None:
     payload = {"adversarial_nations": [VALID["adversarial_nations"][0], {"name": "x"}]}
 
+    config = write(tmp_path, payload)
+
     with pytest.raises(ConfigInvalidError, match=r"adversarial_nations\[1\]"):
-        load_config(write(tmp_path, payload))
+        load_config(config)
 
 
 def test_a_non_boolean_toggle_is_refused(tmp_path: Path) -> None:
     payload = {**VALID, "scoring": {"include_unattributed_in_denominator": "yes"}}
 
+    config = write(tmp_path, payload)
+
     with pytest.raises(ConfigInvalidError, match="must be true or false"):
-        load_config(write(tmp_path, payload))
+        load_config(config)
 
 
 def test_a_non_object_scoring_block_is_refused(tmp_path: Path) -> None:
+    config = write(tmp_path, {**VALID, "scoring": []})
+
     with pytest.raises(ConfigInvalidError, match="must be a JSON object"):
-        load_config(write(tmp_path, {**VALID, "scoring": []}))
+        load_config(config)
 
 
 def test_an_uppercase_country_code_is_folded_and_warns(
@@ -144,8 +160,10 @@ def test_codes_repeated_in_different_cases_are_refused(tmp_path: Path) -> None:
         ]
     }
 
+    config = write(tmp_path, payload)
+
     with pytest.raises(ConfigInvalidError, match="more than once"):
-        load_config(write(tmp_path, payload))
+        load_config(config)
 
 
 # ---------------------------------------------------------------------------
@@ -172,21 +190,27 @@ def test_the_weight_and_threshold_are_read(tmp_path: Path) -> None:
 @pytest.mark.parametrize("key", ["adversarial_weight", "pass_threshold"])
 @pytest.mark.parametrize("value", ["25", None, [], {}])
 def test_a_non_numeric_scoring_value_is_refused(tmp_path: Path, key: str, value: object) -> None:
+    config = write(tmp_path, {**VALID, "scoring": {key: value}})
+
     with pytest.raises(ConfigInvalidError, match="must be a number"):
-        load_config(write(tmp_path, {**VALID, "scoring": {key: value}}))
+        load_config(config)
 
 
 @pytest.mark.parametrize("key", ["adversarial_weight", "pass_threshold"])
 def test_a_boolean_scoring_value_is_refused(tmp_path: Path, key: str) -> None:
     """bool subclasses int, so `true` would silently mean 1."""
+    config = write(tmp_path, {**VALID, "scoring": {key: True}})
+
     with pytest.raises(ConfigInvalidError, match="must be a number"):
-        load_config(write(tmp_path, {**VALID, "scoring": {key: True}}))
+        load_config(config)
 
 
 @pytest.mark.parametrize("key", ["adversarial_weight", "pass_threshold"])
 def test_a_negative_scoring_value_is_refused(tmp_path: Path, key: str) -> None:
+    config = write(tmp_path, {**VALID, "scoring": {key: -1}})
+
     with pytest.raises(ConfigInvalidError, match="must not be negative"):
-        load_config(write(tmp_path, {**VALID, "scoring": {key: -1}}))
+        load_config(config)
 
 
 def test_a_zero_weight_is_allowed(tmp_path: Path) -> None:
@@ -200,8 +224,10 @@ def test_every_configuration_failure_is_a_config_error(tmp_path: Path) -> None:
     """One except clause catches the whole family."""
     with pytest.raises(ConfigError):
         load_config(tmp_path / "absent.json")
+    config = write(tmp_path, {"adversarial_nations": []})
+
     with pytest.raises(ConfigError):
-        load_config(write(tmp_path, {"adversarial_nations": []}))
+        load_config(config)
 
 
 def test_log_config_announces_every_nation(
