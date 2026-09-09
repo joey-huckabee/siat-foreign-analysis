@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Known defects and undecided policy are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-## [1.3.0] - unreleased
+## [1.3.0] - 2026-09-09
 
 Takes six roadmap items. Four harden paths real input has not yet walked and
 move no published number. Two — items 3 and 11 — deliberately change
@@ -131,6 +131,12 @@ reports recorded by running the 1.1.0 script itself.
 That was the point of the release. The correctness items in
 [`docs/ROADMAP.md`](docs/ROADMAP.md) can now be taken one at a time against a
 suite that can prove exactly which numbers each one moves.
+
+> **Known defect, fixed in 1.3.0.** This release's own test suite fails on
+> Linux and macOS. Its recorded reports were produced on Windows, and the JSON
+> reports had platform-dependent line endings — a fault inherited from 1.0.0,
+> not introduced here, but pinned to one platform by these fixtures. CI found
+> it on its first run, which was after this release was cut. Prefer 1.3.0.
 
 ### Added
 
