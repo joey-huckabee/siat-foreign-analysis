@@ -55,6 +55,23 @@ as human contribution is policy, and it is not settled.
 
 ### Fixed
 
+- **The JSON reports had platform-dependent line endings**, and had since
+  1.0.0. `_write_json` opened the file in text mode with no explicit
+  `newline`, so Python translated `json.dumps`' newlines to `os.linesep`: the
+  same input produced a CRLF report on Windows and an LF one on Linux. Two
+  analysts comparing reports, or a checksum taken over one, would disagree for
+  no reason either could see. Both JSON reports are now LF everywhere.
+
+  **On Windows this changes the bytes of `score_report.json` and
+  `detailed_score_report.json`** — LF where they used to be CRLF. The content
+  is unchanged. On Linux and macOS nothing changes. The CSV reports were never
+  affected: `csv` writes its own row terminator and `_write_csv` already
+  passed `newline=""` to stop the text layer translating on top of it.
+
+  Found by CI on its first run, not by review: every Linux and macOS test job
+  failed the byte comparison while the Windows job passed, because the
+  recorded fixtures had been produced on Windows. It is exactly what the
+  cross-platform matrix was added for.
 - Country codes are compared case-insensitively (roadmap item 4). An
   upper-case entry in `country_config.json` used to match nothing at all,
   which did not fail — it reported the repository as clean and awarded a full

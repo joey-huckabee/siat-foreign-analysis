@@ -7,11 +7,17 @@ Two reports, each as JSON and CSV:
 - ``detailed_score_report`` carries the adversarial country breakdown and is
   not.
 
-The exact bytes are a published interface. Key order in the JSON, column
-order in the CSV, ``True`` rather than ``true`` in the CSV, four-space
-indentation, no trailing newline, and CRLF row endings from :mod:`csv` are
-all as the pre-package script produced them, and the round-trip test in
-``tests/test_reports.py`` compares against a recorded copy of that output.
+The exact bytes are a published interface, and they do not depend on the
+platform the tool runs on: JSON is written with LF line endings and no
+trailing newline, CSV with the carriage-return-linefeed row terminator that
+:mod:`csv` writes. Key order in the JSON, column order in the CSV, ``True``
+rather than ``true`` in the CSV, and four-space indentation are all as the
+pre-package script produced them.
+
+``tests/test_baseline.py`` compares against recorded copies byte for byte,
+and CI runs it on Linux, macOS and Windows, so a difference between platforms
+fails rather than going unnoticed. That is not hypothetical: it is how the
+JSON line-ending difference was found, having been present since 1.0.0.
 """
 
 from __future__ import annotations
@@ -85,7 +91,21 @@ def build_detailed_report(scores: list[RepositoryScore]) -> dict[str, dict[str, 
 
 
 def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
-    """Write one JSON report.
+    r"""Write one JSON report, with LF line endings on every platform.
+
+    ``newline="\n"`` is not cosmetic. Without it the text layer translates
+    ``json.dumps``' newlines to ``os.linesep``, so the same input produced a
+    CRLF report on Windows and an LF one on Linux - the published bytes
+    depended on who ran the tool. Two analysts comparing reports, or a
+    checksum taken over one, would disagree for no reason either could see.
+
+    LF is the choice because it is what the majority of consumers and every
+    CI platform produce, and because ``.gitattributes`` normalises to it
+    everywhere else in this repository.
+
+    The CSV reports never had this problem: :mod:`csv` writes its own
+    ``\r\n`` and ``_write_csv`` passes ``newline=""`` to stop the text layer
+    translating on top of it.
 
     Args:
         path: File to write.
@@ -95,7 +115,7 @@ def _write_json(path: Path, payload: Mapping[str, Any]) -> None:
         OutputError: The file could not be written.
     """
     try:
-        with path.open("w", encoding="UTF-8") as handle:
+        with path.open("w", encoding="UTF-8", newline="\n") as handle:
             handle.write(json.dumps(payload, indent=JSON_INDENT))
     except OSError as exc:
         raise OutputError(f"Could not write {path}: {exc}") from exc
