@@ -1,0 +1,22 @@
+{
+    "clean": {
+        "unclass_score": 67.0,
+        "is_passing": true
+    },
+    "hostile": {
+        "unclass_score": 67.0,
+        "is_passing": false
+    },
+    "mixed": {
+        "unclass_score": 67.0,
+        "is_passing": true
+    },
+    "no-contributors": {
+        "unclass_score": 67.0,
+        "is_passing": false
+    },
+    "unattributed": {
+        "unclass_score": 31.0,
+        "is_passing": false
+    }
+}

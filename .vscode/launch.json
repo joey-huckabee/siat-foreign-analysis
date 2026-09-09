@@ -1,15 +1,25 @@
 {
-  // The script resolves `input/` and `output/` relative to the working
-  // directory, so every configuration sets `cwd` to the workspace folder.
-  // Running it from anywhere else silently finds no input and writes an
-  // empty report.
+  // The three paths default to values relative to the working directory, so
+  // every configuration sets `cwd` to the workspace folder. Running from
+  // anywhere else finds no input and writes an empty report; pass --input and
+  // --output explicitly to work against a scan somewhere else.
   "version": "0.2.0",
   "configurations": [
     {
       "name": "Foreign analysis",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/foreign_analysis.py",
+      "module": "siat_foreign_analysis",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true
+    },
+    {
+      "name": "Foreign analysis: verbose",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "siat_foreign_analysis",
+      "args": ["--verbose"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "justMyCode": true
@@ -18,7 +28,7 @@
       "name": "Foreign analysis: step into dependencies",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/foreign_analysis.py",
+      "module": "siat_foreign_analysis",
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       // Lets you step into the standard library when the bug is not ours.

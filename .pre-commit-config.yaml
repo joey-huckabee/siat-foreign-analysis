@@ -1,0 +1,69 @@
+# Run on every commit. `make hooks` installs them.
+#
+# These are the fast half of `make check`: everything here also runs in CI, so
+# a hook passing is a good signal that CI will, and a hook that disagrees with
+# CI is a bug in one of the two.
+
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      # The recorded reports are excluded from all three. They are compared
+      # byte for byte by tests/test_baseline.py, and each hook would quietly
+      # destroy something the comparison depends on: the CSVs carry CRLF row
+      # terminators because that is what the csv module writes, and the JSON
+      # files deliberately have no trailing newline because json.dumps is
+      # written straight out. Normalising them makes the fixtures describe a
+      # file this tool does not produce.
+      - id: end-of-file-fixer
+        exclude: ^tests/fixtures/expected/
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: ^tests/fixtures/expected/
+      - id: trailing-whitespace
+        exclude: ^tests/fixtures/expected/
+
+  - repo: https://github.com/psf/black
+    rev: 26.5.1
+    hooks:
+      - id: black
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 9.0.1
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
+    hooks:
+      - id: ruff
+        # No `--fix`. `make lint` and CI run `ruff check .`, which reports; a
+        # hook that quietly rewrites the file instead means the two can
+        # disagree about whether the tree is clean.
+        args: [--no-fix]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: poetry run mypy --config-file mypy.ini
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      # Given the two names rather than `.`, because pointing pylint at the
+      # directory makes it try to lint the virtualenv.
+      - id: pylint
+        name: pylint
+        entry: poetry run pylint siat_foreign_analysis tests
+        language: system
+        types: [python]
+        pass_filenames: false

@@ -1,0 +1,104 @@
+{
+    "clean": {
+        "is_passing": true,
+        "score": 92.0,
+        "details": {
+            "countries": {
+                "ru": {
+                    "commits": 0,
+                    "commitPercent": 0,
+                    "commitsPercent": 0.0
+                },
+                "bc": {
+                    "commits": 0,
+                    "commitPercent": 0,
+                    "commitsPercent": 0.0
+                }
+            },
+            "topAdvContributorCountry": null,
+            "advPercent": 0.0,
+            "advScore": 25
+        }
+    },
+    "hostile": {
+        "is_passing": false,
+        "score": 67.0,
+        "details": {
+            "countries": {
+                "ru": {
+                    "commits": 40,
+                    "commitPercent": 0,
+                    "commitsPercent": 40.0
+                },
+                "bc": {
+                    "commits": 0,
+                    "commitPercent": 0,
+                    "commitsPercent": 0.0
+                }
+            },
+            "topAdvContributorCountry": "ru",
+            "advPercent": 40.0,
+            "advScore": 0.0
+        }
+    },
+    "mixed": {
+        "is_passing": true,
+        "score": 87.0,
+        "details": {
+            "countries": {
+                "ru": {
+                    "commits": 12,
+                    "commitPercent": 0,
+                    "commitsPercent": 1.9704433497536946
+                },
+                "bc": {
+                    "commits": 0,
+                    "commitPercent": 0,
+                    "commitsPercent": 0.0
+                }
+            },
+            "topAdvContributorCountry": "ru",
+            "advPercent": 1.9704433497536946,
+            "advScore": 20.0
+        }
+    },
+    "no-contributors": {
+        "is_passing": false,
+        "score": 67.0,
+        "details": {
+            "countries": {
+                "ru": {
+                    "commits": 0,
+                    "commitPercent": 0
+                },
+                "bc": {
+                    "commits": 0,
+                    "commitPercent": 0
+                }
+            },
+            "topAdvContributorCountry": null,
+            "advScore": 0
+        }
+    },
+    "unattributed": {
+        "is_passing": false,
+        "score": 56.0,
+        "details": {
+            "countries": {
+                "ru": {
+                    "commits": 0,
+                    "commitPercent": 0,
+                    "commitsPercent": 0.0
+                },
+                "bc": {
+                    "commits": 0,
+                    "commitPercent": 0,
+                    "commitsPercent": 0.0
+                }
+            },
+            "topAdvContributorCountry": null,
+            "advPercent": 0.0,
+            "advScore": 25
+        }
+    }
+}

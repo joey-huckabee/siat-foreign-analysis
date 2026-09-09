@@ -1,0 +1,15 @@
+{
+    "adversarial_nations": [
+        {
+            "name": "russia",
+            "country_code": "ru"
+        },
+        {
+            "name": "badcountry",
+            "country_code": "bc"
+        }
+    ],
+    "scoring": {
+        "include_unattributed_in_denominator": true
+    }
+}

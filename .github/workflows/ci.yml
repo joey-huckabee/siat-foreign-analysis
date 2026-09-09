@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  POETRY_VERSION: "2.3.4"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint & type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: poetry
+
+      - name: Install dependencies
+        run: poetry install --with dev --no-interaction
+
+      - name: black
+        run: poetry run black --check --diff .
+
+      - name: isort
+        run: poetry run isort --check-only --diff .
+
+      - name: ruff
+        run: poetry run ruff check --output-format=github .
+
+      - name: pylint
+        run: poetry run pylint siat_foreign_analysis tests
+
+      - name: mypy
+        run: poetry run mypy --config-file mypy.ini
+
+      - name: vulture
+        run: poetry run vulture
+
+  test:
+    name: Test (py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          # The reports are byte-compared, and the CSV writer's line endings
+          # are the thing most likely to differ by platform. Windows earns its
+          # place in this matrix for that reason specifically.
+          - os: windows-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: poetry
+
+      - name: Install dependencies
+        run: poetry install --with dev --no-interaction
+
+      - name: pytest
+        run: poetry run pytest
+
+      - name: Upload coverage
+        if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: error
+
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: poetry
+
+      - name: Build
+        run: poetry build
+
+      # The console script is the documented way to run this, and nothing
+      # else in CI installs the built artifact to find out whether it works.
+      - name: The built distribution runs
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --quiet dist/*.whl
+          /tmp/smoke/bin/siat-foreign-analysis --version
+          /tmp/smoke/bin/python -m siat_foreign_analysis --version
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/

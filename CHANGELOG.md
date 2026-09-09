@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Known defects and undecided policy are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+## [1.2.0] - 2026-09-08
+
+Restructures the project without moving a single published number. The four
+reports are byte-for-byte identical to 1.1.0 for the same input, which is
+asserted rather than asserted-to: `tests/test_baseline.py` compares against
+reports recorded by running the 1.1.0 script itself.
+
+That was the point of the release. The correctness items in
+[`docs/ROADMAP.md`](docs/ROADMAP.md) can now be taken one at a time against a
+suite that can prove exactly which numbers each one moves.
+
+### Added
+
+- A test suite: 185 tests at 99.66% coverage, with a 95% floor enforced by
+  `pytest-cov`. Includes five synthetic GitHub-Metrics documents chosen to
+  reach every scoring band, both denominator settings, and the paths for a
+  contributor list that never arrived and a repository nobody could be
+  located in (roadmap items 16 and 25).
+- `tests/fixtures/expected/`: reports recorded from the 1.1.0 script, compared
+  byte for byte. A change that moves a published number now fails a test
+  instead of going unnoticed.
+- Continuous integration (roadmap item 22): `ci.yml` runs the linters, the
+  type checker and the suite across Python 3.10 to 3.14 on Linux plus Windows
+  and macOS, then builds and smoke-tests the wheel; `codeql.yml`; and
+  `sonarcloud.yml`, which skips with a notice rather than failing when its
+  three secrets are absent.
+- `.pre-commit-config.yaml`, running the fast half of `make check`.
+- A `Makefile`. `make check` is exactly what CI runs.
+- `LICENSE` (Apache-2.0, matching GitHub-Metrics), `CONTRIBUTING.md`,
+  `CLAUDE.md`, `AGENTS.md` and `.editorconfig` (roadmap items 19, 21, 24).
+- A command line interface. `--input`, `--output` and `--config` were hard
+  coded relative to the working directory, so running from anywhere else
+  found nothing and wrote an empty report in silence. Built on `argparse`;
+  the package still has **no runtime dependencies**.
+- `--verbose`, `--quiet` and `--version`.
+- Distinct exit codes for configuration, input and output failures.
+- An exception hierarchy under `ForeignAnalysisError`. Each leaf also inherits
+  the built-in the script raised at the same point, so existing `except`
+  clauses keep working.
+- `MissingFieldError` names the document as well as the absent field. A bare
+  `KeyError` said which key was missing and nothing about which of the inputs
+  lacked it.
+- Validation of `country_config.json`, reported against the file's path: bad
+  JSON, a missing or empty `adversarial_nations` list, a malformed entry, and
+  a non-boolean toggle are each named. An upper-case country code now warns
+  that it will match nothing (roadmap item 4 is still open; this only warns).
+- A JSON document found below the top level of the input directory is
+  reported rather than passed over, which is how a GitHub-Metrics scan
+  directory copied across verbatim used to produce an empty report (roadmap
+  item 9 remains open; discovery is still non-recursive).
+
+### Changed
+
+- The script is now a package, `siat_foreign_analysis`, split into `cli`,
+  `config`, `scoring`, `models`, `inputs`, `reports`, `errors`, `exit_codes`
+  and `logger`.
+- `python foreign_analysis.py` is replaced by the `siat-foreign-analysis`
+  console script, or `python -m siat_foreign_analysis`. **This is breaking for
+  anything invoking the script by path.**
+- All 39 `print()` calls became logging. Per-contributor detail is `DEBUG`,
+  progress is `INFO`. Diagnostics go to **stderr**, leaving stdout clean.
+- `pyproject.toml` carries project metadata and a version, and declares the
+  development dependencies that `requirements-dev.txt` used to list unpinned
+  (roadmap items 20 and 23).
+- `mypy.ini`, `.pylintrc` and `sonar-project.properties` retargeted at the
+  package and the tests.
+- `[tool.pyright]` dropped. Pyright was configured and never installed;
+  Pylance reads `python.analysis.typeCheckingMode` from `.vscode/settings.json`
+  instead, and mypy is the type checker CI runs.
+
+### Fixed
+
+- An archived document was logged as `input\docs.tar.gz/bcrypt.json`, joining
+  a native path to a POSIX one with a literal separator. Archive and member
+  are now separated by `::` (roadmap item 15).
+- The linters, the type checker and the dead-code check had never been run
+  against the code. All of them now pass, and CI keeps it that way (roadmap
+  item 17).
+- `README.md` was one line. It now covers what the tool consumes, how to
+  populate `input/` in both accepted shapes, how to run it, what the four
+  outputs mean, the `country_config.json` schema, and the link to
+  GitHub-Metrics that made the pipeline visible from neither end (roadmap
+  item 18).
+
+### Deprecated
+
+- `requirements-dev.txt` is removed. Use `poetry install --with dev`.
+
 ## [1.1.0] - 2026-09-08
 
 ### Added
@@ -92,5 +180,6 @@ historical project.
   ever matched. A repository whose top contributor was Russian scored a clean
   25 of 25. Codes lowercased.
 
+[1.2.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/joey-huckabee/siat-foreign-analysis/releases/tag/v1.0.0
