@@ -18,9 +18,14 @@ disable =
     too-few-public-methods,
     duplicate-code,
     fixme,
-    # The analysis script reuses short names at module scope and inside
-    # calculate_adv, which is not the shadowing this rule is meant to catch.
-    redefined-outer-name
+    # A pytest fixture is consumed by a parameter of the same name, so
+    # every test using a locally-defined fixture trips this.
+    redefined-outer-name,
+    # `assert discover_inputs(...) == []` asserts the type as well as the
+    # emptiness. `assert not discover_inputs(...)` passes on None, on 0 and
+    # on "", none of which the function may return. The comparison is the
+    # stronger assertion and is deliberate in tests.
+    use-implicit-booleaness-not-comparison
 
 [FORMAT]
 max-line-length = 100

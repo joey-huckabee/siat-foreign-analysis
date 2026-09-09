@@ -7,6 +7,214 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Known defects and undecided policy are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+## [1.3.0] - 2026-09-09
+
+Takes six roadmap items. Four harden paths real input has not yet walked and
+move no published number. Two — items 3 and 11 — deliberately change
+`detailed_score_report`, and nothing else: neither CSV moved, `score_report`
+did not move, and **no repository changed band or pass/fail verdict**.
+
+If you parse `detailed_score_report.json`, read *Changed* below before
+upgrading.
+
+Item 1 (bot commits) is deferred by decision — whether a bot's commits count
+as human contribution is policy, and it is not settled.
+
+### Added
+
+- `scoring.adversarial_weight` and `scoring.pass_threshold` in
+  `country_config.json` (roadmap item 14). Both were literals in the code.
+  They default to `25` and `70.0`, so a configuration that omits the block
+  scores exactly as before. A weight of `0` scores the five upstream
+  components alone without editing code.
+- Both are validated as non-negative numbers. `bool` is rejected explicitly:
+  it subclasses `int` in Python, so `"pass_threshold": true` would otherwise
+  be read as a threshold of 1 and pass every repository.
+- A configuration listing the same country code twice in different cases is
+  refused. The two entries would collapse into one report key and only the
+  last name would be announced.
+
+### Changed
+
+- `sonar-project.properties` suppresses nothing. The one rule exclusion it
+  carried is gone; a finding this project disagrees with is left open and
+  argued in review rather than hidden in configuration. Everything remaining
+  in that file tells the scanner where to look — the source and test split,
+  the coverage report, the interpreter versions — and none of it changes
+  whether an issue is reported.
+- Errors reported by the CLI keep their traceback instead of discarding it.
+  The one-line message is unchanged at the default level; `--verbose` now
+  shows the traceback beneath it.
+- **`details.countries.<code>.commitPercent` is removed** (roadmap item 11).
+  It sat beside the real `commitsPercent`, was initialised and never
+  assigned, and so read integer `0` for every country of every repository
+  ever scored. Nothing can have depended on its value, only its presence.
+- **A blank `country_code` no longer counts as an attribution** (roadmap item
+  3), so its commits leave the adversarial-percentage denominator and join
+  the unattributed bucket, where `include_unattributed_in_denominator`
+  governs them like any other. Upstream emits three states — `null` for no
+  lookup, `""` for a lookup that resolved no country, and a real code — and
+  only `null` was being tested.
+
+  This moves numbers. For `pallets/itsdangerous` the denominator falls from
+  476 to 467 and contributor coverage from 64.29% to 61.90%, the latter being
+  the more honest figure: that contributor was never actually located. Any
+  repository where blank-code commits were diluting a real adversarial
+  percentage will now score lower, which is the point.
+
+### Security
+
+- **Documents and archives discovered under `--input` are confirmed to resolve
+  inside it.** A scan directory, or one unpacked from a `.tar.gz`, arrives
+  from somewhere else; a symlink in it pointing at a file outside was followed
+  by an ordinary read, and the walk that found it never noticed. The archive
+  reader already refused non-regular members for this reason — this closes the
+  same hole for documents already on disk. Report paths are checked against
+  the output directory on the same principle.
+- The three paths from the command line are resolved once, at the edge, so
+  every later comparison is between real paths and log lines name what was
+  actually used.
+
+  Raised by SonarCloud's taint analysis (`S8707`) on its first run. The finding
+  was about command-line arguments, which are the user's own intent and not a
+  vulnerability; following it to where the argument leads found one that is.
+
+### Fixed
+
+- **The JSON reports had platform-dependent line endings**, and had since
+  1.0.0. `_write_json` opened the file in text mode with no explicit
+  `newline`, so Python translated `json.dumps`' newlines to `os.linesep`: the
+  same input produced a CRLF report on Windows and an LF one on Linux. Two
+  analysts comparing reports, or a checksum taken over one, would disagree for
+  no reason either could see. Both JSON reports are now LF everywhere.
+
+  **On Windows this changes the bytes of `score_report.json` and
+  `detailed_score_report.json`** — LF where they used to be CRLF. The content
+  is unchanged. On Linux and macOS nothing changes. The CSV reports were never
+  affected: `csv` writes its own row terminator and `_write_csv` already
+  passed `newline=""` to stop the text layer translating on top of it.
+
+  Found by CI on its first run, not by review: every Linux and macOS test job
+  failed the byte comparison while the Windows job passed, because the
+  recorded fixtures had been produced on Windows. It is exactly what the
+  cross-platform matrix was added for.
+- Country codes are compared case-insensitively (roadmap item 4). An
+  upper-case entry in `country_config.json` used to match nothing at all,
+  which did not fail — it reported the repository as clean and awarded a full
+  25. This had already happened once; see 1.0.0. Both sides are folded, so
+  neither the configuration nor an upper-case code from upstream can
+  reintroduce it, and the reports key on the folded code.
+- A `null` contribution counts as zero commits instead of raising `TypeError`
+  (roadmap item 6). Upstream types the field `int | None`. One null used to
+  lose the entire run, because the reports are written only after every input
+  is processed. The substitution is logged with the contributor and document
+  named. Zero is the only value that does not invent a number.
+- Documents nested by owner are found (roadmap item 9). GitHub-Metrics writes
+  `<output>/<owner>/<repoid>.json`, and matching only the top level meant a
+  scan directory copied across verbatim produced an empty report and exit 0 —
+  no result and no error. Both bare documents and archives are now found at
+  any depth, and discovery is sorted so report key order is stable across
+  runs.
+
+### Changed
+
+- `LICENSE` matches GitHub-Metrics exactly again; the copyright line filled in
+  during 1.2.0 is back to the upstream placeholder.
+
+## [1.2.0] - 2026-09-08
+
+Restructures the project without moving a single published number. The four
+reports are byte-for-byte identical to 1.1.0 for the same input, which is
+asserted rather than asserted-to: `tests/test_baseline.py` compares against
+reports recorded by running the 1.1.0 script itself.
+
+That was the point of the release. The correctness items in
+[`docs/ROADMAP.md`](docs/ROADMAP.md) can now be taken one at a time against a
+suite that can prove exactly which numbers each one moves.
+
+> **Known defect, fixed in 1.3.0.** This release's own test suite fails on
+> Linux and macOS. Its recorded reports were produced on Windows, and the JSON
+> reports had platform-dependent line endings — a fault inherited from 1.0.0,
+> not introduced here, but pinned to one platform by these fixtures. CI found
+> it on its first run, which was after this release was cut. Prefer 1.3.0.
+
+### Added
+
+- A test suite: 185 tests at 99.66% coverage, with a 95% floor enforced by
+  `pytest-cov`. Includes five synthetic GitHub-Metrics documents chosen to
+  reach every scoring band, both denominator settings, and the paths for a
+  contributor list that never arrived and a repository nobody could be
+  located in (roadmap items 16 and 25).
+- `tests/fixtures/expected/`: reports recorded from the 1.1.0 script, compared
+  byte for byte. A change that moves a published number now fails a test
+  instead of going unnoticed.
+- Continuous integration (roadmap item 22): `ci.yml` runs the linters, the
+  type checker and the suite across Python 3.10 to 3.14 on Linux plus Windows
+  and macOS, then builds and smoke-tests the wheel; `codeql.yml`; and
+  `sonarcloud.yml`, which skips with a notice rather than failing when its
+  three secrets are absent.
+- `.pre-commit-config.yaml`, running the fast half of `make check`.
+- A `Makefile`. `make check` is exactly what CI runs.
+- `LICENSE` (Apache-2.0, matching GitHub-Metrics), `CONTRIBUTING.md`,
+  `CLAUDE.md`, `AGENTS.md` and `.editorconfig` (roadmap items 19, 21, 24).
+- A command line interface. `--input`, `--output` and `--config` were hard
+  coded relative to the working directory, so running from anywhere else
+  found nothing and wrote an empty report in silence. Built on `argparse`;
+  the package still has **no runtime dependencies**.
+- `--verbose`, `--quiet` and `--version`.
+- Distinct exit codes for configuration, input and output failures.
+- An exception hierarchy under `ForeignAnalysisError`. Each leaf also inherits
+  the built-in the script raised at the same point, so existing `except`
+  clauses keep working.
+- `MissingFieldError` names the document as well as the absent field. A bare
+  `KeyError` said which key was missing and nothing about which of the inputs
+  lacked it.
+- Validation of `country_config.json`, reported against the file's path: bad
+  JSON, a missing or empty `adversarial_nations` list, a malformed entry, and
+  a non-boolean toggle are each named. An upper-case country code now warns
+  that it will match nothing (roadmap item 4 is still open; this only warns).
+- A JSON document found below the top level of the input directory is
+  reported rather than passed over, which is how a GitHub-Metrics scan
+  directory copied across verbatim used to produce an empty report (roadmap
+  item 9 remains open; discovery is still non-recursive).
+
+### Changed
+
+- The script is now a package, `siat_foreign_analysis`, split into `cli`,
+  `config`, `scoring`, `models`, `inputs`, `reports`, `errors`, `exit_codes`
+  and `logger`.
+- `python foreign_analysis.py` is replaced by the `siat-foreign-analysis`
+  console script, or `python -m siat_foreign_analysis`. **This is breaking for
+  anything invoking the script by path.**
+- All 39 `print()` calls became logging. Per-contributor detail is `DEBUG`,
+  progress is `INFO`. Diagnostics go to **stderr**, leaving stdout clean.
+- `pyproject.toml` carries project metadata and a version, and declares the
+  development dependencies that `requirements-dev.txt` used to list unpinned
+  (roadmap items 20 and 23).
+- `mypy.ini`, `.pylintrc` and `sonar-project.properties` retargeted at the
+  package and the tests.
+- `[tool.pyright]` dropped. Pyright was configured and never installed;
+  Pylance reads `python.analysis.typeCheckingMode` from `.vscode/settings.json`
+  instead, and mypy is the type checker CI runs.
+
+### Fixed
+
+- An archived document was logged as `input\docs.tar.gz/bcrypt.json`, joining
+  a native path to a POSIX one with a literal separator. Archive and member
+  are now separated by `::` (roadmap item 15).
+- The linters, the type checker and the dead-code check had never been run
+  against the code. All of them now pass, and CI keeps it that way (roadmap
+  item 17).
+- `README.md` was one line. It now covers what the tool consumes, how to
+  populate `input/` in both accepted shapes, how to run it, what the four
+  outputs mean, the `country_config.json` schema, and the link to
+  GitHub-Metrics that made the pipeline visible from neither end (roadmap
+  item 18).
+
+### Deprecated
+
+- `requirements-dev.txt` is removed. Use `poetry install --with dev`.
+
 ## [1.1.0] - 2026-09-08
 
 ### Added
@@ -92,5 +300,7 @@ historical project.
   ever matched. A repository whose top contributor was Russian scored a clean
   25 of 25. Codes lowercased.
 
+[1.3.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/joey-huckabee/siat-foreign-analysis/releases/tag/v1.0.0

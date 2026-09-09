@@ -5,3 +5,15 @@
 *.toml text eol=lf
 *.ini text eol=lf
 *.properties text eol=lf
+# Archives are binary; never translate line endings inside them.
+*.tar.gz binary
+*.tgz binary
+
+# Recorded reports, compared byte for byte by tests/test_baseline.py.
+#
+# The CSVs carry CRLF row terminators because that is what the csv module
+# writes and what the published files therefore contain. `* text=auto eol=lf`
+# above would normalise them to LF on checkout, and the comparison would fail
+# on a fresh clone and in CI while passing on the machine that recorded them.
+# `-text` disables every conversion, so these arrive exactly as committed.
+tests/fixtures/expected/** -text

@@ -1,0 +1,153 @@
+{
+  "name": "mixed",
+  "owner": "example",
+  "organization": "example",
+  "url": "https://github.com/example/mixed",
+  "scan_date": "2026-01-01 00:00:00+00:00",
+  "scan_id": "00000000-0000-4000-8000-000000000000",
+  "stars": 100,
+  "forks": 10,
+  "age_days": 2000.0,
+  "last_update_hours": 24.0,
+  "closed_issues": 10,
+  "releases": 5,
+  "prevalence_score": 12.0,
+  "stars_score": 10.0,
+  "forks_score": 15.0,
+  "maturity_score": 15.0,
+  "last_update_score": 15.0,
+  "trusted_org_bonus": 0.0,
+  "total_score": 67.0,
+  "is_trusted_org": false,
+  "contributors": [
+    {
+      "scan_id": "00000000-0000-4000-8000-000000000000",
+      "scan_date": "2026-01-01 00:00:00+00:00",
+      "github_id": "1",
+      "name": "Ada",
+      "organization": "",
+      "location": "Somewhere, us",
+      "internal_address": {
+        "query": null,
+        "formatted_address": null,
+        "street": null,
+        "house_number": null,
+        "suburb": null,
+        "post_code": null,
+        "state": null,
+        "state_code": null,
+        "state_district": null,
+        "county": null,
+        "country": null,
+        "country_code": "us",
+        "city": null,
+        "internal_location": {
+          "latitude": null,
+          "longitude": null
+        }
+      },
+      "contribution": 88,
+      "is_bot": false,
+      "foreign": null,
+      "adversarial": null
+    },
+    {
+      "scan_id": "00000000-0000-4000-8000-000000000000",
+      "scan_date": "2026-01-01 00:00:00+00:00",
+      "github_id": "2",
+      "name": "Ivan",
+      "organization": "",
+      "location": "Somewhere, ru",
+      "internal_address": {
+        "query": null,
+        "formatted_address": null,
+        "street": null,
+        "house_number": null,
+        "suburb": null,
+        "post_code": null,
+        "state": null,
+        "state_code": null,
+        "state_district": null,
+        "county": null,
+        "country": null,
+        "country_code": "ru",
+        "city": null,
+        "internal_location": {
+          "latitude": null,
+          "longitude": null
+        }
+      },
+      "contribution": 12,
+      "is_bot": false,
+      "foreign": null,
+      "adversarial": null
+    },
+    {
+      "scan_id": "00000000-0000-4000-8000-000000000000",
+      "scan_date": "2026-01-01 00:00:00+00:00",
+      "github_id": "3",
+      "name": "dependabot[bot]",
+      "organization": "",
+      "location": null,
+      "internal_address": {
+        "query": null,
+        "formatted_address": null,
+        "street": null,
+        "house_number": null,
+        "suburb": null,
+        "post_code": null,
+        "state": null,
+        "state_code": null,
+        "state_district": null,
+        "county": null,
+        "country": null,
+        "country_code": null,
+        "city": null,
+        "internal_location": {
+          "latitude": null,
+          "longitude": null
+        }
+      },
+      "contribution": 500,
+      "is_bot": true,
+      "foreign": null,
+      "adversarial": null
+    },
+    {
+      "scan_id": "00000000-0000-4000-8000-000000000000",
+      "scan_date": "2026-01-01 00:00:00+00:00",
+      "github_id": "4",
+      "name": "Blank",
+      "organization": "",
+      "location": "Somewhere, ",
+      "internal_address": {
+        "query": null,
+        "formatted_address": null,
+        "street": null,
+        "house_number": null,
+        "suburb": null,
+        "post_code": null,
+        "state": null,
+        "state_code": null,
+        "state_district": null,
+        "county": null,
+        "country": null,
+        "country_code": "",
+        "city": null,
+        "internal_location": {
+          "latitude": null,
+          "longitude": null
+        }
+      },
+      "contribution": 9,
+      "is_bot": false,
+      "foreign": null,
+      "adversarial": null
+    }
+  ],
+  "contribution_total": 609,
+  "foreign_contribution": null,
+  "adversarial_contribution": null,
+  "foreign_percent": null,
+  "adversarial_percent": null
+}

@@ -1,0 +1,6 @@
+package_name,is_passing,unclass_score,adversarial_score,total_score
+clean,True,67.0,25,92.0
+hostile,False,67.0,0.0,67.0
+mixed,True,67.0,10.0,77.0
+no-contributors,False,67.0,0,67.0
+unattributed,False,31.0,0,31.0

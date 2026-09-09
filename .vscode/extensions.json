@@ -1,7 +1,8 @@
 {
-  // Ruff, YAML, TOML and GitHub Actions extensions are omitted: this project
-  // has no pyproject.toml, no YAML, no TOML and no workflows for them to act
-  // on. Add them back alongside the config they need.
+  // Ruff, YAML, TOML, EditorConfig and GitHub Actions extensions are all
+  // recommended now that the config each one acts on exists: pyproject.toml
+  // carries [tool.ruff], .pre-commit-config.yaml and .github/workflows/ are
+  // YAML, and .editorconfig arrived in 1.2.0.
   "recommendations": [
     "ms-python.python",
     "ms-python.vscode-pylance",
@@ -9,7 +10,12 @@
     "ms-python.black-formatter",
     "ms-python.isort",
     "ms-python.pylint",
-    "ms-python.mypy-type-checker"
+    "ms-python.mypy-type-checker",
+    "charliermarsh.ruff",
+    "editorconfig.editorconfig",
+    "redhat.vscode-yaml",
+    "tamasfe.even-better-toml",
+    "github.vscode-github-actions"
   ],
   "unwantedRecommendations": [
     "ms-python.flake8",

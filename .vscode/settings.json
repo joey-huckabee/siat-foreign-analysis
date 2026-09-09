@@ -46,10 +46,9 @@
   // ---------------------------------------------------------------------
   // Python environment
   //
-  // An in-project .venv, which the Python extension detects automatically.
-  // Recreate it with `py -3 -m venv .venv` if it is missing. The analysis
-  // script itself needs only the standard library; the linters and type
-  // checker are development tools.
+  // An in-project .venv, managed by Poetry. Recreate it with
+  // `poetry install --with dev` if it is missing. The package itself needs
+  // only the standard library; everything installed is a development tool.
   // ---------------------------------------------------------------------
   "python.terminal.activateEnvInCurrentTerminal": true,
   "python.analysis.typeCheckingMode": "standard",
@@ -59,12 +58,12 @@
   // ---------------------------------------------------------------------
   // Testing
   //
-  // There is no test suite yet. Enabling discovery against a missing `tests`
-  // directory makes the Test panel report an error on every reload, so both
-  // frameworks stay off until there is something to discover.
+  // pytest, configured in pyproject.toml. unittest stays off: enabling both
+  // makes the Test panel discover each test twice.
   // ---------------------------------------------------------------------
-  "python.testing.pytestEnabled": false,
+  "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests"],
 
   // ---------------------------------------------------------------------
   // Noise reduction
