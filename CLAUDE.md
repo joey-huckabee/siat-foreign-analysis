@@ -111,6 +111,13 @@ project disagrees with stays open and gets argued in review. An exclusion
 added to green a dashboard outlives its reason, and the next person cannot
 tell a decision from an expedient.
 
+Three `S8572` findings in `cli.py` are open on purpose. Sonar wants
+`logging.exception()` in an `except` block; the rule's concern is that the
+traceback is discarded, and it is not — the one-line message goes to the user
+at ERROR and the traceback to DEBUG, so `--verbose` has it. Inflicting a stack
+trace on someone who mistyped a path is worse than the finding. Leave them
+open; do not silence them.
+
 **Diagnostics go to stderr.** Nothing writes to stdout. The package logger
 does not propagate, which means `caplog` cannot see it once
 `configure_logging` has run — read `capsys.readouterr().err` in tests that

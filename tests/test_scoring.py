@@ -371,9 +371,10 @@ def test_the_pass_threshold_is_inclusive(document: dict[str, Any]) -> None:
 
 def test_a_document_without_a_name_is_named(document: dict[str, Any]) -> None:
     del document["name"]
+    conf = config()
 
     with pytest.raises(MissingFieldError) as caught:
-        score_repository(document, config(), "somewhere.json")
+        score_repository(document, conf, "somewhere.json")
 
     assert "somewhere.json" in str(caught.value)
 
