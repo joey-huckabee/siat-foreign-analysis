@@ -24,6 +24,7 @@ from siat_foreign_analysis.inputs import (
     get_json_member_paths_in_tar_gz,
     read_json,
 )
+from tests.conftest import write_tar_gz
 
 PAYLOAD = json.dumps({"name": "example"}).encode()
 
@@ -270,19 +271,54 @@ def test_an_empty_input_directory_yields_nothing(tmp_path: Path) -> None:
     assert discover_inputs(tmp_path) == []
 
 
-def test_nested_documents_are_reported_not_silently_skipped(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    """Roadmap item 9: a scan directory copied verbatim scores nothing."""
+def test_nested_documents_are_read(tmp_path: Path) -> None:
+    """Roadmap item 9: a scan directory copied verbatim used to score nothing.
+
+    GitHub-Metrics writes `<owner>/<repoid>.json`, so this is the shape a
+    real scan arrives in.
+    """
     nested = tmp_path / "pyca"
     nested.mkdir()
     (nested / "bcrypt.json").write_bytes(PAYLOAD)
 
-    with caplog.at_level("WARNING"):
-        sources = discover_inputs(tmp_path)
+    sources = discover_inputs(tmp_path)
 
-    assert sources == []
-    assert "below the top level" in caplog.text
+    assert [Path(str(s.member)).name for s in sources] == ["bcrypt.json"]
+
+
+def test_documents_are_found_at_any_depth(tmp_path: Path) -> None:
+    for depth in ("a.json", "one/b.json", "one/two/c.json"):
+        target = tmp_path / depth
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(PAYLOAD)
+
+    names = [Path(str(s.member)).name for s in discover_inputs(tmp_path)]
+
+    assert sorted(names) == ["a.json", "b.json", "c.json"]
+
+
+def test_nested_archives_are_found_too(tmp_path: Path) -> None:
+    nested = tmp_path / "scans" / "2026-09"
+    nested.mkdir(parents=True)
+    write_tar_gz(nested / "docs.tar.gz", {"inner.json": PAYLOAD})
+
+    sources = discover_inputs(tmp_path)
+
+    assert len(sources) == 1
+    assert sources[0].archive is not None
+
+
+def test_discovery_order_is_stable(tmp_path: Path) -> None:
+    """Report keys come out in discovery order, so it must not wobble."""
+    for name in ("z.json", "a.json", "m/n.json"):
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(PAYLOAD)
+
+    first = [s.member for s in discover_inputs(tmp_path)]
+    second = [s.member for s in discover_inputs(tmp_path)]
+
+    assert first == second == sorted(first)
 
 
 # ---------------------------------------------------------------------------

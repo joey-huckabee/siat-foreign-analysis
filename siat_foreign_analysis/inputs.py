@@ -229,14 +229,18 @@ def get_json_member_paths_in_tar_gz(
 def discover_inputs(input_dir: Path | str = DEFAULT_INPUT_DIR) -> list[InputSource]:
     """Find every document to score, archives first then bare files.
 
-    Bare files are matched non-recursively. GitHub-Metrics writes its
-    documents as ``<output>/<owner>/<repoid>.json``, so a scan directory
-    copied across verbatim has its documents one level down and yields
-    nothing here. That is roadmap item 9; until it is taken, a nested
-    document is counted and reported rather than passed over in silence.
+    Both searches are recursive. GitHub-Metrics writes its documents as
+    ``<output>/<owner>/<repoid>.json``, so a scan directory copied across
+    verbatim has every document one level down. Matching only the top level
+    found none of them and wrote an empty report without saying so, which is
+    the worst of both: no result and no error (roadmap item 9).
+
+    Results are sorted, so a run over the same directory scores its documents
+    in the same order every time and the report keys come out in a stable
+    order.
 
     Args:
-        input_dir: Directory to search.
+        input_dir: Directory to search, at any depth.
 
     Returns:
         Sources in the order they will be scored.
@@ -248,36 +252,17 @@ def discover_inputs(input_dir: Path | str = DEFAULT_INPUT_DIR) -> list[InputSour
         logger.warning("Input directory does not exist: %s", directory)
         return sources
 
-    for archive_path in sorted(directory.glob("*.tar.gz")):
+    for archive_path in sorted(directory.rglob("*.tar.gz")):
         members = get_json_member_paths_in_tar_gz(tar_gz_path=archive_path)
         logger.debug("Archive %s holds %d JSON member(s)", archive_path, len(members))
         sources.extend(InputSource(archive=archive, member=member) for archive, member in members)
 
     sources.extend(
         InputSource(archive=None, member=PurePosixPath(direct_path.as_posix()))
-        for direct_path in sorted(directory.glob("*.json"))
+        for direct_path in sorted(directory.rglob("*.json"))
     )
-
-    _warn_about_nested_json(directory)
 
     if not sources:
         logger.warning("No JSON documents or .tar.gz archives found in %s", directory)
 
     return sources
-
-
-def _warn_about_nested_json(directory: Path) -> None:
-    """Report JSON files below the top level, which discovery does not read.
-
-    Args:
-        directory: The input directory being searched.
-    """
-    nested = [path for path in directory.rglob("*.json") if path.parent != directory]
-    if nested:
-        logger.warning(
-            "%d JSON file(s) below the top level of %s were not read. Documents must sit "
-            "directly in the input directory, or inside a .tar.gz archive. First: %s",
-            len(nested),
-            directory,
-            nested[0],
-        )

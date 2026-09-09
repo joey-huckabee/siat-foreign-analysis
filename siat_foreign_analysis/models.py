@@ -31,15 +31,25 @@ class AdversarialNation:
 class ScoringConfig:
     """The optional ``scoring`` block of the country configuration.
 
+    Every field defaults to the value that was a literal in the code before
+    roadmap item 14 moved it here, so a configuration that omits the block
+    entirely scores exactly as 1.1.0 did.
+
     Attributes:
         include_unattributed_in_denominator: When true, commits by
             contributors with no attributed country enter the
             adversarial-percentage denominator. Defaults to false, which is
             1.0.0 behaviour: missing attribution does not deflate the
             adversarial percentage.
+        adversarial_weight: Points a repository with no adversarial
+            contribution is awarded. The bands scale with it.
+        pass_threshold: Total score, adversarial bonus included, at which a
+            repository passes.
     """
 
     include_unattributed_in_denominator: bool = False
+    adversarial_weight: float = 25
+    pass_threshold: float = 70.0
 
 
 @dataclass(frozen=True)
@@ -51,13 +61,18 @@ class Config:
 
     @property
     def adversarial_country_codes(self) -> tuple[str, ...]:
-        """Return the configured country codes, in configuration order.
+        """Return the configured country codes, case-folded, in config order.
 
         Order is load-bearing: it decides the key order of the per-country
         block in the detailed report, and it breaks ties when two adversarial
         countries have an equal number of commits.
+
+        Codes are case-folded here and contributor codes are case-folded
+        where they are compared, so a configuration written ``RU`` matches
+        and reports under ``ru`` rather than matching nothing and calling the
+        repository clean (roadmap item 4).
         """
-        return tuple(nation.country_code for nation in self.adversarial_nations)
+        return tuple(nation.country_code.casefold() for nation in self.adversarial_nations)
 
 
 # ---------------------------------------------------------------------------

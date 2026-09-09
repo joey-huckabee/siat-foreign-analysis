@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Known defects and undecided policy are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+## [1.3.0] - unreleased
+
+Takes four roadmap items that harden paths real input has not yet walked.
+**No published number moves**: the byte comparison against the recorded 1.1.0
+reports stayed green through all four, which is what says so rather than a
+claim in a commit message.
+
+Item 1 (bot commits) is deferred by decision — whether a bot's commits count
+as human contribution is policy, and it is not settled.
+
+### Added
+
+- `scoring.adversarial_weight` and `scoring.pass_threshold` in
+  `country_config.json` (roadmap item 14). Both were literals in the code.
+  They default to `25` and `70.0`, so a configuration that omits the block
+  scores exactly as before. A weight of `0` scores the five upstream
+  components alone without editing code.
+- Both are validated as non-negative numbers. `bool` is rejected explicitly:
+  it subclasses `int` in Python, so `"pass_threshold": true` would otherwise
+  be read as a threshold of 1 and pass every repository.
+- A configuration listing the same country code twice in different cases is
+  refused. The two entries would collapse into one report key and only the
+  last name would be announced.
+
+### Fixed
+
+- Country codes are compared case-insensitively (roadmap item 4). An
+  upper-case entry in `country_config.json` used to match nothing at all,
+  which did not fail — it reported the repository as clean and awarded a full
+  25. This had already happened once; see 1.0.0. Both sides are folded, so
+  neither the configuration nor an upper-case code from upstream can
+  reintroduce it, and the reports key on the folded code.
+- A `null` contribution counts as zero commits instead of raising `TypeError`
+  (roadmap item 6). Upstream types the field `int | None`. One null used to
+  lose the entire run, because the reports are written only after every input
+  is processed. The substitution is logged with the contributor and document
+  named. Zero is the only value that does not invent a number.
+- Documents nested by owner are found (roadmap item 9). GitHub-Metrics writes
+  `<output>/<owner>/<repoid>.json`, and matching only the top level meant a
+  scan directory copied across verbatim produced an empty report and exit 0 —
+  no result and no error. Both bare documents and archives are now found at
+  any depth, and discovery is sorted so report key order is stable across
+  runs.
+
+### Changed
+
+- `LICENSE` matches GitHub-Metrics exactly again; the copyright line filled in
+  during 1.2.0 is back to the upstream placeholder.
+
 ## [1.2.0] - 2026-09-08
 
 Restructures the project without moving a single published number. The four
@@ -180,6 +229,7 @@ historical project.
   ever matched. A repository whose top contributor was Russian scored a clean
   25 of 25. Codes lowercased.
 
+[1.3.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/joey-huckabee/siat-foreign-analysis/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/joey-huckabee/siat-foreign-analysis/releases/tag/v1.0.0

@@ -23,16 +23,27 @@ Items 4 and 9 now warn at runtime but are otherwise unchanged.
 
 | | Items | State |
 |---|---|---|
-| High | 1-5 | Open. Item 4 warns. |
-| Medium | 6-10 | Open. Item 9 warns. |
-| Low | 11-14 | Open. |
-| Low | 15 | **Done in 1.2.0.** |
-| Project | 16-25 | **Done in 1.2.0.** |
+| High | 1, 2, 3, 5 | Open |
+| High | 4 | **Done in 1.3.0** |
+| Medium | 7, 8, 10 | Open |
+| Medium | 6, 9 | **Done in 1.3.0** |
+| Low | 11, 12, 13 | Open |
+| Low | 14 | **Done in 1.3.0** |
+| Low | 15 | **Done in 1.2.0** |
+| Project | 16-25 | **Done in 1.2.0** |
 
-What changed underneath them is that there is now a test suite pinning the
-published bytes against the previous release, so taking any of items 1 to 14
-produces a failing comparison that names exactly which numbers moved. See
-`tests/test_baseline.py`.
+Item 1 is deferred by decision rather than by difficulty: whether a bot's
+commits count as human contribution is policy, and it is not settled.
+
+Items 4, 6, 9 and 14 were taken in 1.3.0 and moved **no published number** —
+the byte comparison in `tests/test_baseline.py` stayed green through all
+four, which is what says so. Each hardens a path that had not yet been walked
+by real input rather than correcting a number the tool has actually
+published.
+
+There is now a test suite pinning the published bytes against the previous
+release, so taking any remaining item produces a failing comparison that names
+exactly which numbers moved. See `tests/test_baseline.py`.
 
 ---
 
@@ -73,7 +84,7 @@ and returned no country component at that resolution), and a real code. Line
 commits enter the denominator as though attributed. `itsdangerous` has **9
 commits** in that bucket.
 
-### 4. Country-code case is matched by convention, not enforced
+### 4. Country-code case is matched by convention, not enforced - DONE in 1.3.0
 
 GitHub-Metrics emits `country_code` as lower-case ISO 3166-1 alpha-2. The
 config was uppercase at first, so nothing ever matched.
@@ -86,9 +97,11 @@ reintroduces the same **silent false negative**.
 Casefold both sides where they are compared, rather than relying on the config
 being written correctly.
 
-*1.2.0: `load_config` warns when a configured code is not lower case, and
-`tests/test_scoring.py::test_country_codes_are_matched_case_sensitively` pins
-the current behaviour. The comparison itself is unchanged.*
+*Fixed: `Config.adversarial_country_codes` case-folds the configuration and
+`calculate_adv` case-folds each contributor code before comparing, so neither
+side can be written in a case that silently matches nothing. The reports key
+on the folded code. A configuration that lists the same code twice in
+different cases is now refused rather than quietly losing one of the two.*
 
 ### 5. `bc` is not a real country code
 
@@ -102,12 +115,18 @@ or a real entry.
 
 ## Medium — crashes, or silently omits data, on input not yet seen
 
-### 6. `contribution` may be `null`
+### 6. `contribution` may be `null` - DONE in 1.3.0
 
 Upstream types it `int | None`. Lines 299 and 304 do `total_commits +=
 contribution` with no guard, and `None` raises `TypeError`. Every repository
 processed before it is lost, because the reports are written only after the
 loop completes.
+
+*Fixed: a null contribution counts as zero commits and is logged as a warning
+naming the contributor and the document. Zero is the only substitution that
+does not invent a number. Note this does not fix the wider problem the item
+describes — one bad document still loses the whole run, which is items 6 and
+10 together and remains open as item 10.*
 
 ### 7. `advPercent` is absent on the zero-contributor path
 
@@ -129,7 +148,7 @@ unattributed commits do not deflate the adversarial percentage. One default
 declines to penalise missing data; the other penalises it maximally. Pick one
 policy and apply it to both.
 
-### 9. Documents nested by owner are not found
+### 9. Documents nested by owner are not found - DONE in 1.3.0
 
 GitHub-Metrics writes its documents as `<output>/<owner>/<repoid>.json`. Line
 262 globs `input/*.json`, non-recursively, so a scan directory copied across
@@ -139,10 +158,10 @@ Note the archive path does not share this defect:
 `get_json_member_paths_in_tar_gz` walks every member at any depth. Only bare
 files on disk must be flattened. Use `rglob`, or document the requirement.
 
-*1.2.0: `discover_inputs` counts the documents below the top level and warns,
-naming the first, so the run no longer reports an empty result in silence.
-The requirement is documented in `README.md`. Discovery is still
-non-recursive, so the item stands.*
+*Fixed: `discover_inputs` uses `rglob` for both bare documents and archives,
+so a scan directory copied across verbatim is read where it stands. Results
+are sorted, so discovery order — and therefore report key order — is stable
+across runs.*
 
 ### 10. Repositories that failed collection are invisible
 
@@ -173,11 +192,17 @@ Lines 360 and 366 key on `data["name"]`, not owner-qualified, so two
 repositories with the same name from different owners silently overwrite each
 other. The document carries `owner` and `url`; either disambiguates.
 
-### 14. Pass threshold and adversarial weight are literals
+### 14. Pass threshold and adversarial weight are literals - DONE in 1.3.0
 
 `70.0` (line 359) and `adv_weight = 25` (line 186) are policy, and belong in
 `country_config.json` beside the nation list and the scoring block that is
 already there.
+
+*Fixed: both are `scoring.pass_threshold` and `scoring.adversarial_weight`,
+validated as non-negative numbers, defaulting to the historical literals so an
+omitted block scores exactly as before. `bool` is rejected explicitly because
+it subclasses `int` in Python, and `"pass_threshold": true` would otherwise
+mean a threshold of 1 and pass everything.*
 
 ### 15. Mixed path separators in the progress line - DONE in 1.2.0
 
@@ -287,9 +312,20 @@ directory would make item 16 possible.
 
 ---
 
-## Resolved in 1.2.0
+## Resolved
 
-What each project item became, for anyone reading an old reference:
+What each item became, for anyone reading an old reference.
+
+### 1.3.0 — no published number moved
+
+| Item | Resolution |
+|---|---|
+| 4 | Both sides case-folded; duplicate codes refused |
+| 6 | A null contribution counts as zero and warns |
+| 9 | `rglob` for documents and archives; sorted for stable order |
+| 14 | `scoring.adversarial_weight` and `scoring.pass_threshold` |
+
+### 1.2.0
 
 | Item | Resolution |
 |---|---|

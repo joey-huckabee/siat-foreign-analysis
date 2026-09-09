@@ -24,8 +24,9 @@ nothing upstream computes them. This package computes the adversarial half.
 - `trusted_org_bonus` is a further **+10 on top**, so a total can exceed 100.
 - Pass is **70 or more**, adversarial bonus included.
 
-Both are literals in `scoring.py` (`ADV_WEIGHT`, `PASS_THRESHOLD`) rather than
-configuration. That is roadmap item 14, not an oversight.
+Both are configurable as `scoring.adversarial_weight` and
+`scoring.pass_threshold`, defaulting to the historical literals still named in
+`scoring.py` as `ADV_WEIGHT` and `PASS_THRESHOLD`.
 
 ### Two reports, one of which leaves the building
 
@@ -82,9 +83,11 @@ thing to account for. That is why the CLI is `argparse` and not `click`.
 ### Conventions that will bite you
 
 **Country codes are lower case.** GitHub-Metrics emits ISO 3166-1 alpha-2 in
-lower case. Codes are compared exactly as configured, so an upper-case entry
-in `country_config.json` matches nothing and reports the repository clean with
-a full 25. This already happened once — see CHANGELOG 1.0.0.
+lower case, and both sides are case-folded before comparison since 1.3.0, so
+an upper-case configuration matches rather than silently reporting every
+repository clean. It did exactly that once — see CHANGELOG 1.0.0. The reports
+key on the folded code, so do not assume the report key matches the spelling
+in the configuration file.
 
 **The published bytes are an interface.** Key order, column order, `True`
 rather than `true`, four-space indentation, no trailing newline, CRLF row

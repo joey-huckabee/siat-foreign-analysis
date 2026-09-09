@@ -113,15 +113,87 @@ def test_a_non_object_scoring_block_is_refused(tmp_path: Path) -> None:
         load_config(write(tmp_path, {**VALID, "scoring": []}))
 
 
-def test_an_uppercase_country_code_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-    """Roadmap item 4: it loads, matches nothing, and reports clean."""
+def test_an_uppercase_country_code_is_folded_and_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Roadmap item 4: it now matches, and says it had to be normalised."""
     payload = {"adversarial_nations": [{"name": "russia", "country_code": "RU"}]}
 
     with caplog.at_level("WARNING"):
         config = load_config(write(tmp_path, payload))
 
-    assert config.adversarial_country_codes == ("RU",)
+    assert config.adversarial_country_codes == ("ru",)
     assert "not lower case" in caplog.text
+
+
+def test_a_lowercase_configuration_warns_about_nothing(
+    config_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level("WARNING"):
+        load_config(config_path)
+
+    assert caplog.text == ""
+
+
+def test_codes_repeated_in_different_cases_are_refused(tmp_path: Path) -> None:
+    """They would share one folded report key and lose a name."""
+    payload = {
+        "adversarial_nations": [
+            {"name": "russia", "country_code": "ru"},
+            {"name": "russia-again", "country_code": "RU"},
+        ]
+    }
+
+    with pytest.raises(ConfigInvalidError, match="more than once"):
+        load_config(write(tmp_path, payload))
+
+
+# ---------------------------------------------------------------------------
+# Configurable policy (roadmap item 14)
+# ---------------------------------------------------------------------------
+
+
+def test_the_scoring_defaults_are_the_historical_literals(tmp_path: Path) -> None:
+    scoring = load_config(write(tmp_path, VALID)).scoring
+
+    assert scoring.adversarial_weight == 25
+    assert scoring.pass_threshold == 70.0
+
+
+def test_the_weight_and_threshold_are_read(tmp_path: Path) -> None:
+    payload = {**VALID, "scoring": {"adversarial_weight": 40, "pass_threshold": 80.0}}
+
+    scoring = load_config(write(tmp_path, payload)).scoring
+
+    assert scoring.adversarial_weight == 40
+    assert scoring.pass_threshold == 80.0
+
+
+@pytest.mark.parametrize("key", ["adversarial_weight", "pass_threshold"])
+@pytest.mark.parametrize("value", ["25", None, [], {}])
+def test_a_non_numeric_scoring_value_is_refused(tmp_path: Path, key: str, value: object) -> None:
+    with pytest.raises(ConfigInvalidError, match="must be a number"):
+        load_config(write(tmp_path, {**VALID, "scoring": {key: value}}))
+
+
+@pytest.mark.parametrize("key", ["adversarial_weight", "pass_threshold"])
+def test_a_boolean_scoring_value_is_refused(tmp_path: Path, key: str) -> None:
+    """bool subclasses int, so `true` would silently mean 1."""
+    with pytest.raises(ConfigInvalidError, match="must be a number"):
+        load_config(write(tmp_path, {**VALID, "scoring": {key: True}}))
+
+
+@pytest.mark.parametrize("key", ["adversarial_weight", "pass_threshold"])
+def test_a_negative_scoring_value_is_refused(tmp_path: Path, key: str) -> None:
+    with pytest.raises(ConfigInvalidError, match="must not be negative"):
+        load_config(write(tmp_path, {**VALID, "scoring": {key: -1}}))
+
+
+def test_a_zero_weight_is_allowed(tmp_path: Path) -> None:
+    """Scoring the upstream components alone is a legitimate configuration."""
+    payload = {**VALID, "scoring": {"adversarial_weight": 0}}
+
+    assert load_config(write(tmp_path, payload)).scoring.adversarial_weight == 0
 
 
 def test_every_configuration_failure_is_a_config_error(tmp_path: Path) -> None:
@@ -141,3 +213,5 @@ def test_log_config_announces_every_nation(
     assert "ru: russia" in caplog.text
     assert "bc: badcountry" in caplog.text
     assert "include_unattributed_in_denominator: False" in caplog.text
+    assert "adversarial_weight: 25" in caplog.text
+    assert "pass_threshold: 70.0" in caplog.text

@@ -133,13 +133,28 @@ def test_zero_denominator_returns_the_full_penalty_and_no_percent() -> None:
     assert "advPercent" not in result.to_details()
 
 
-def test_country_codes_are_matched_case_sensitively() -> None:
-    """Roadmap item 4: an upper-case config silently matches nothing."""
-    result = calculate_adv(["ru"], [50], 100, ("RU",))
+def test_an_uppercase_configuration_still_matches() -> None:
+    """Roadmap item 4: this used to report a clean 25 and pass."""
+    result = calculate_adv(["ru"], [50], 100, config(codes=("RU",)).adversarial_country_codes)
 
-    assert result.countries["RU"].commits == 0
-    assert result.adv_percent == 0.0
-    assert result.adv_score == ADV_WEIGHT
+    assert result.countries["ru"].commits == 50
+    assert result.adv_percent == 50.0
+    assert result.adv_score == 0.0
+
+
+def test_an_uppercase_country_code_from_upstream_still_matches() -> None:
+    """The fold is applied to both sides, not just the configuration."""
+    result = calculate_adv(["RU"], [50], 100, ADVERSARIAL)
+
+    assert result.countries["ru"].commits == 50
+    assert result.adv_percent == 50.0
+
+
+def test_folded_codes_key_the_report_consistently() -> None:
+    """Whatever case the config is written in, the report keys are folded."""
+    assert list(
+        calculate_adv([], [], 1, config(codes=("RU", "Bc")).adversarial_country_codes).countries
+    ) == ["ru", "bc"]
 
 
 def test_parallel_lists_must_be_the_same_length() -> None:
@@ -205,12 +220,48 @@ def test_an_empty_country_code_counts_as_attributed(document: dict[str, Any]) ->
     assert coverage.unattributed == 0
 
 
-def test_a_null_contribution_raises(document: dict[str, Any]) -> None:
-    """Roadmap item 6: upstream types contribution `int | None`."""
-    document["contributors"] = [make_contributor("ru", None)]
+def test_a_null_contribution_counts_as_zero(
+    document: dict[str, Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    """Roadmap item 6: this used to raise TypeError and lose the whole run."""
+    document["contributors"] = [make_contributor("ru", None), make_contributor("us", 10)]
 
-    with pytest.raises(TypeError):
-        collect_contributions(document, include_unattributed=False, source="test")
+    with caplog.at_level("WARNING"):
+        codes, commits, total, coverage = collect_contributions(
+            document, include_unattributed=False, source="test"
+        )
+
+    assert codes == ["ru", "us"]
+    assert commits == [0, 10]
+    assert total == 10
+    assert coverage.total == 2
+    assert "null contribution" in caplog.text
+
+
+def test_a_null_contribution_on_an_unattributed_contributor_is_safe(
+    document: dict[str, Any],
+) -> None:
+    """The other branch adds to the denominator too, when the toggle is on."""
+    document["contributors"] = [make_contributor(None, None)]
+
+    _, _, total, coverage = collect_contributions(
+        document, include_unattributed=True, source="test"
+    )
+
+    assert total == 0
+    assert coverage.unattributed == 1
+
+
+def test_a_repository_of_only_null_contributions_does_not_crash(
+    document: dict[str, Any],
+) -> None:
+    """It scores as zero-denominator rather than losing the run."""
+    document["contributors"] = [make_contributor("ru", None), make_contributor("us", None)]
+
+    score = score_repository(document, config(), "test")
+
+    assert score.adversarial.adv_percent is None
+    assert score.adversarial.adv_score == 0
 
 
 def test_a_document_without_contributors_is_named(document: dict[str, Any]) -> None:
@@ -292,3 +343,52 @@ def test_a_document_without_a_name_is_named(document: dict[str, Any]) -> None:
         score_repository(document, config(), "somewhere.json")
 
     assert "somewhere.json" in str(caught.value)
+
+
+# ---------------------------------------------------------------------------
+# Configurable policy (roadmap item 14)
+# ---------------------------------------------------------------------------
+
+
+def test_the_default_weight_and_threshold_are_the_historical_literals() -> None:
+    assert ScoringConfig().adversarial_weight == 25
+    assert ScoringConfig().pass_threshold == 70.0
+    assert ADV_WEIGHT == 25
+    assert PASS_THRESHOLD == 70.0
+
+
+def test_the_default_weight_is_an_integer() -> None:
+    """It is what makes a clean repository score `25` and not `25.0`."""
+    assert isinstance(ScoringConfig().adversarial_weight, int)
+
+
+def test_the_bands_scale_with_a_configured_weight() -> None:
+    assert score_for_percent(0.0, adv_weight=50) == 50
+    assert score_for_percent(1.5, adv_weight=50) == 40.0
+    assert score_for_percent(99.0, adv_weight=50) == 0.0
+
+
+def test_a_zero_weight_removes_the_adversarial_component(
+    document: dict[str, Any],
+) -> None:
+    """Scoring the five upstream components alone, without editing code."""
+    document["contributors"] = [make_contributor("us", 100)]
+    scoring = ScoringConfig(adversarial_weight=0)
+    conf = Config(adversarial_nations=(AdversarialNation("russia", "ru"),), scoring=scoring)
+
+    score = score_repository(document, conf, "test")
+
+    assert score.adversarial.adv_score == 0
+    assert score.total_score == score.unclass_score
+
+
+def test_a_configured_threshold_decides_passing(document: dict[str, Any]) -> None:
+    document["contributors"] = [make_contributor("us", 100)]
+    nations = (AdversarialNation("russia", "ru"),)
+
+    strict = Config(adversarial_nations=nations, scoring=ScoringConfig(pass_threshold=93.0))
+    lenient = Config(adversarial_nations=nations, scoring=ScoringConfig(pass_threshold=10.0))
+
+    assert score_repository(document, strict, "test").total_score == 92.0
+    assert score_repository(document, strict, "test").is_passing is False
+    assert score_repository(document, lenient, "test").is_passing is True

@@ -67,15 +67,18 @@ input/
 └── itsdangerous.json
 ```
 
-Note that GitHub-Metrics writes its documents as
-`<output>/<owner>/<repoid>.json`. Bare files are found **at the top level
-only**, so a scan directory copied across verbatim leaves its documents one
-level down where nothing reads them. Flatten them, or pack them into an
-archive. A run that finds nested documents says so rather than reporting an
-empty result.
+Documents are found **at any depth**, so a GitHub-Metrics scan directory can
+be copied across exactly as it was written — `<owner>/<repoid>.json` and all:
 
-**Archives.** Drop the scan in as a `.tar.gz` and leave it packed. JSON
-members are found at any depth, so the directory structure does not matter:
+```
+input/
+└── scan-2026-09/
+    ├── pyca/bcrypt.json
+    └── pallets/itsdangerous.json
+```
+
+**Archives.** Drop the scan in as a `.tar.gz` and leave it packed. Archives
+are found at any depth too, and JSON members inside them at any depth:
 
 ```
 input/
@@ -151,7 +154,9 @@ bcrypt,True,67.0,25,92.0
         { "name": "russia", "country_code": "ru" }
     ],
     "scoring": {
-        "include_unattributed_in_denominator": false
+        "include_unattributed_in_denominator": false,
+        "adversarial_weight": 25,
+        "pass_threshold": 70.0
     }
 }
 ```
@@ -161,16 +166,24 @@ a `country_code`. Order is load-bearing: it fixes the key order of the
 per-country block in the detailed report, and breaks ties when two nations
 have an equal number of commits.
 
-> **Country codes must be lower case.** GitHub-Metrics emits `country_code` as
-> lower-case ISO 3166-1 alpha-2, and codes are currently compared exactly as
-> written. An upper-case entry matches nothing at all, which does not fail —
-> it reports the repository as clean and scores it a full 25. A run warns
-> about any code that is not lower case.
+Codes are compared case-insensitively, and the reports key on the lower-case
+form. GitHub-Metrics emits lower-case ISO 3166-1 alpha-2, so writing them that
+way matches the data and avoids a warning; writing `RU` still works. Listing
+the same code twice in different cases is refused, because the two entries
+would collapse into one report key.
 
-**`scoring.include_unattributed_in_denominator`** (optional, default `false`).
-Commits by contributors with no attributed country are left out of the
-adversarial-percentage denominator, so missing attribution does not deflate
-the percentage. Setting it `true` counts them.
+The whole `scoring` block is optional, and every key in it defaults to the
+value the tool used before it was configurable.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `include_unattributed_in_denominator` | `false` | Whether commits with no attributed country enter the adversarial-percentage denominator. Left out by default, so missing attribution does not deflate the percentage. |
+| `adversarial_weight` | `25` | Points a clean repository is awarded. The bands scale with it; `0` removes the adversarial component and scores the upstream metrics alone. |
+| `pass_threshold` | `70.0` | Total score, adversarial bonus included, at which a repository passes. |
+
+Write `adversarial_weight` as a whole number unless you want fractional
+points: an integer weight makes a clean repository score `25` in the JSON,
+while `25.0` makes it `25.0`.
 
 Coverage of contributor attribution is reported at the end of every run. It is
 worth reading: a repository can score a clean 25 on a contributor list that was

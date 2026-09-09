@@ -5,9 +5,11 @@ a missing ``adversarial_nations`` key raised a bare :class:`KeyError` naming
 the key and nothing about the file it came from. Loading is a stage of its
 own here, and every way the file can be wrong is reported against its path.
 
-Nothing in this module decides policy. The pass threshold and the adversarial
-weight are still literals in :mod:`siat_foreign_analysis.scoring`; moving them
-here beside the nation list is roadmap item 14.
+The whole of the scoring policy is configurable from here: the adversarial
+nations, whether unattributed commits count toward the denominator, the
+adversarial weight and the pass threshold. Every setting defaults to the value
+that was a literal in the code before roadmap item 14, so an omitted or
+minimal configuration scores exactly as 1.1.0 did.
 """
 
 from __future__ import annotations
@@ -78,11 +80,12 @@ def _parse_nation(entry: Any, path: Path, index: int) -> AdversarialNation:
 def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
     """Read and validate the country configuration.
 
-    Country codes are taken exactly as written. GitHub-Metrics emits
-    ``country_code`` as lower-case ISO 3166-1 alpha-2, and a configuration
-    written in upper case matches nothing at all - which is not an error here
-    but a silent false negative in the score. Case-folding both sides is
-    roadmap item 4; until it is taken, this function only warns.
+    GitHub-Metrics emits ``country_code`` as lower-case ISO 3166-1 alpha-2.
+    Codes are compared case-insensitively, so a configuration written in upper
+    case still matches - it used to match nothing at all and report every
+    repository clean, which failed nothing and was wrong everywhere. A code
+    that is not already lower case is warned about, because it does not match
+    the shape of the data it is compared against.
 
     Args:
         path: Path to the configuration file.
@@ -93,8 +96,9 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
     Raises:
         ConfigNotFoundError: If the file does not exist.
         ConfigInvalidError: If the file is not valid JSON, is not an object,
-            or carries an ``adversarial_nations`` list that is absent, empty,
-            or malformed.
+            carries an ``adversarial_nations`` list that is absent, empty,
+            malformed or repeats a code, or carries a ``scoring`` block whose
+            values are of the wrong type or negative.
     """
     config_path = Path(path)
     if not config_path.is_file():
@@ -126,16 +130,26 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
     )
 
     for nation in nations:
-        if nation.country_code != nation.country_code.lower():
+        if nation.country_code != nation.country_code.casefold():
             logger.warning(
-                "Country code %r for %r is not lower case. GitHub-Metrics emits lower-case "
-                "ISO 3166-1 alpha-2, so this entry will never match a contributor.",
+                "Country code %r for %r is not lower case; matching it as %r. GitHub-Metrics "
+                "emits lower-case ISO 3166-1 alpha-2, and the reports key on the folded code.",
                 nation.country_code,
                 nation.name,
+                nation.country_code.casefold(),
             )
+
+    duplicates = _duplicate_codes(nations)
+    if duplicates:
+        raise ConfigInvalidError(
+            f"{config_path}: 'adversarial_nations' lists {', '.join(duplicates)} more than once. "
+            f"Codes are compared case-insensitively, so the entries would share one report key "
+            f"and only the last name would be announced."
+        )
 
     scoring_raw = document.get("scoring", {})
     scoring_block = _require_mapping(scoring_raw, config_path, "'scoring'")
+
     include_unattributed = scoring_block.get("include_unattributed_in_denominator", False)
     if not isinstance(include_unattributed, bool):
         raise ConfigInvalidError(
@@ -143,10 +157,72 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
             f"false, got {include_unattributed!r}"
         )
 
+    adversarial_weight = _require_non_negative_number(
+        scoring_block, "adversarial_weight", ScoringConfig.adversarial_weight, config_path
+    )
+    pass_threshold = _require_non_negative_number(
+        scoring_block, "pass_threshold", ScoringConfig.pass_threshold, config_path
+    )
+
     return Config(
         adversarial_nations=nations,
-        scoring=ScoringConfig(include_unattributed_in_denominator=include_unattributed),
+        scoring=ScoringConfig(
+            include_unattributed_in_denominator=include_unattributed,
+            adversarial_weight=adversarial_weight,
+            pass_threshold=pass_threshold,
+        ),
     )
+
+
+def _duplicate_codes(nations: tuple[AdversarialNation, ...]) -> list[str]:
+    """Return case-folded country codes that appear more than once.
+
+    Args:
+        nations: The parsed nation entries.
+
+    Returns:
+        Each repeated code, in first-seen order.
+    """
+    seen: set[str] = set()
+    repeated: list[str] = []
+    for nation in nations:
+        code = nation.country_code.casefold()
+        if code in seen and code not in repeated:
+            repeated.append(code)
+        seen.add(code)
+    return repeated
+
+
+def _require_non_negative_number(
+    block: dict[str, Any], key: str, default: float, path: Path
+) -> float:
+    """Read one numeric scoring setting, or return its default.
+
+    ``bool`` is rejected explicitly: it is a subclass of ``int`` in Python, so
+    ``"pass_threshold": true`` would otherwise be accepted as a threshold of 1
+    and pass every repository.
+
+    Args:
+        block: The decoded ``scoring`` block.
+        key: Setting to read.
+        default: Value to use when the setting is absent.
+        path: Configuration file, for the message.
+
+    Returns:
+        The configured value, or the default.
+
+    Raises:
+        ConfigInvalidError: If present but not a non-negative number.
+    """
+    if key not in block:
+        return default
+
+    value = block[key]
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ConfigInvalidError(f"{path}: 'scoring.{key}' must be a number, got {value!r}")
+    if value < 0:
+        raise ConfigInvalidError(f"{path}: 'scoring.{key}' must not be negative, got {value!r}")
+    return value
 
 
 def log_config(config: Config) -> None:
@@ -162,6 +238,8 @@ def log_config(config: Config) -> None:
         "include_unattributed_in_denominator: %s",
         config.scoring.include_unattributed_in_denominator,
     )
+    logger.info("adversarial_weight: %s", config.scoring.adversarial_weight)
+    logger.info("pass_threshold: %s", config.scoring.pass_threshold)
     logger.info("%s", "-" * 50)
     logger.info("Adversarial Nations List used for Processing:")
     logger.info("%s", "-" * 50)

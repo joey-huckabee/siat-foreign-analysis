@@ -27,10 +27,21 @@ from siat_foreign_analysis.models import (
 logger = get_logger(__name__)
 
 ADV_WEIGHT: Final = 25
-"""Points a repository with no adversarial contribution is awarded."""
+"""Default points a repository with no adversarial contribution is awarded.
+
+Overridden by ``scoring.adversarial_weight`` in the country configuration.
+This is the value used when the configuration does not say (roadmap item 14).
+
+Deliberately an integer. It makes a clean repository score integer ``25``
+where every other band produces a float, which is visible in the published
+JSON as ``25`` beside ``22.5``.
+"""
 
 PASS_THRESHOLD: Final = 70.0
-"""Total score, adversarial bonus included, at which a repository passes."""
+"""Default total score, adversarial bonus included, at which a repo passes.
+
+Overridden by ``scoring.pass_threshold`` in the country configuration.
+"""
 
 UPSTREAM_SCORE_FIELDS: Final = (
     "trusted_org_bonus",
@@ -61,10 +72,10 @@ BANDS: Final[tuple[tuple[float, float], ...]] = (
 
 An adversarial percentage at or above the last bound scores zero.
 
-The first multiplier is the integer ``1`` rather than ``1.0`` on purpose. It
-makes a clean repository score integer ``25`` where every other band produces
-a float, and that difference is visible in the published JSON - ``25`` beside
-``22.5``. Normalising it would change output this release is not changing.
+The first multiplier is the integer ``1`` rather than ``1.0`` on purpose. With
+an integer weight it makes a clean repository score integer ``25`` where every
+other band produces a float, and that difference is visible in the published
+JSON - ``25`` beside ``22.5``. Normalising it would move published bytes.
 """
 
 
@@ -73,6 +84,8 @@ def calculate_adv(
     country_commits: list[int],
     total_commits: int,
     adv_cc_list: tuple[str, ...] | list[str],
+    *,
+    adv_weight: float = ADV_WEIGHT,
 ) -> AdversarialResult:
     """Compute the adversarial finding for a single repository.
 
@@ -83,7 +96,10 @@ def calculate_adv(
         total_commits: The denominator, decided by the caller so that
             ``include_unattributed_in_denominator`` can change it.
         adv_cc_list: Configured adversarial country codes, in configuration
-            order.
+            order. Expected already case-folded; see
+            :attr:`~siat_foreign_analysis.models.Config.adversarial_country_codes`.
+        adv_weight: Points awarded to a repository with no adversarial
+            contribution.
 
     Returns:
         The finding, including per-country counts for every configured
@@ -95,14 +111,15 @@ def calculate_adv(
     # repositories: a country absent from this repository still appears.
     commits_by_country: dict[str, int] = dict.fromkeys(adv_cc_list, 0)
 
-    # Country codes are compared exactly as configured. An upper-case entry
-    # matches no contributor and reports a clean repository; case-folding
-    # both sides is roadmap item 4.
+    # Both sides are case-folded, so neither an upper-case configuration nor
+    # an upper-case country code from upstream can silently match nothing and
+    # report the repository clean (roadmap item 4).
     adv_commits = 0
     for code, commits in zip(cc_list, country_commits, strict=True):
-        if code in commits_by_country:
+        key = code.casefold()
+        if key in commits_by_country:
             adv_commits += commits
-            commits_by_country[code] += commits
+            commits_by_country[key] += commits
 
     # Tie broken by first occurrence, which is insertion order, which is
     # configuration order.
@@ -133,24 +150,25 @@ def calculate_adv(
     return AdversarialResult(
         countries=countries,
         top_country=top_country,
-        adv_score=score_for_percent(adv_percent),
+        adv_score=score_for_percent(adv_percent, adv_weight=adv_weight),
         adv_percent=adv_percent,
     )
 
 
-def score_for_percent(adv_percent: float) -> float:
+def score_for_percent(adv_percent: float, *, adv_weight: float = ADV_WEIGHT) -> float:
     """Return the tiered bonus for an adversarial percentage.
 
     Args:
         adv_percent: Adversarial commits as a percentage of the denominator.
+        adv_weight: Points awarded in the top band.
 
     Returns:
-        The bonus, from :data:`ADV_WEIGHT` down to zero.
+        The bonus, from ``adv_weight`` down to zero.
     """
     for bound, multiplier in BANDS:
         if adv_percent < bound:
-            return multiplier * ADV_WEIGHT
-    return 0.0 * ADV_WEIGHT
+            return multiplier * adv_weight
+    return 0.0 * adv_weight
 
 
 def collect_contributions(
@@ -185,7 +203,21 @@ def collect_contributions(
 
     for contributor in document["contributors"]:
         code = contributor.get("internal_address", {}).get("country_code")
+
+        # `contribution` is typed `int | None` upstream. A null used to raise
+        # TypeError on the first addition and lose the whole run, because
+        # reports are written only after every input is processed. A
+        # contributor upstream could not count is worth zero commits here -
+        # counting them as anything else would invent a number - and the
+        # substitution is logged so it is not silent (roadmap item 6).
         contribution = contributor.get("contribution")
+        if contribution is None:
+            logger.warning(
+                "%s: contributor %r has a null contribution; counting it as 0 commits",
+                source,
+                contributor.get("name", "<unnamed>"),
+            )
+            contribution = 0
 
         # `is_bot` is published on every contributor record and is not read
         # here. Bots miss this calculation only because they publish no
@@ -195,10 +227,6 @@ def collect_contributions(
         #
         # An empty-string country code is treated as attributed, because only
         # `None` is tested. Roadmap item 3.
-        #
-        # `contribution` is typed `int | None` upstream. A null raises
-        # TypeError here and loses the whole run, because reports are written
-        # only after every input is processed. Roadmap item 6.
         if code is None:
             unattributed += 1
             if include_unattributed:
@@ -269,7 +297,13 @@ def score_repository(document: Any, config: Config, source: str) -> RepositorySc
     logger.info("contributor_country_none_count = %d", coverage.unattributed)
     logger.info("Contributor Country Data Quality = %s%%", coverage.percentage)
 
-    adversarial = calculate_adv(codes, commits, total_commits, config.adversarial_country_codes)
+    adversarial = calculate_adv(
+        codes,
+        commits,
+        total_commits,
+        config.adversarial_country_codes,
+        adv_weight=config.scoring.adversarial_weight,
+    )
     unclassified = unclassified_score(document, source)
     total_score = unclassified + adversarial.adv_score
 
@@ -279,7 +313,7 @@ def score_repository(document: Any, config: Config, source: str) -> RepositorySc
         name=document["name"],
         unclass_score=unclassified,
         total_score=total_score,
-        is_passing=total_score >= PASS_THRESHOLD,
+        is_passing=total_score >= config.scoring.pass_threshold,
         adversarial=adversarial,
         coverage=coverage,
     )
