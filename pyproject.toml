@@ -43,14 +43,14 @@ packages = [{ include = "siat_foreign_analysis" }]
 # pins, while this file carried only their settings. One file describes the
 # toolchain now, and every tool the configuration mentions is installed by it.
 [tool.poetry.group.dev.dependencies]
-black = ">=24.10.0"
-isort = ">=5.13.2"
-mypy = ">=1.13.0"
+black = ">=26.10.1"
+isort = ">=9.0.2"
+mypy = ">=2.4.0"
 pre-commit = ">=4.0.1"
-pylint = ">=3.3.1"
+pylint = ">=4.1.3"
 pytest = ">=8.3.0"
 pytest-cov = ">=6.0.0"
-ruff = ">=0.8.0"
+ruff = ">=0.17.0"
 vulture = ">=2.13"
 
 [build-system]
